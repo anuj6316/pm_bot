@@ -1,0 +1,151 @@
+networks:
+  pm_bot_network: { driver: bridge }
+volumes:
+  pg_data: {}
+  qdrant_data: {}
+  redis_data: {}
+
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes: [ pg_data:/var/lib/postgresql/data ]
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    networks: [ pm_bot_network ]
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    networks: [ pm_bot_network ]
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    environment:
+      - QDRANT_SERVICE_API_KEY= ${QDRANT_API_KEY}
+    volumes: [ qdrant_data:/var/lib/qdrant/data ]
+    ports:
+      - "6333:6333"
+    networks:
+      - pm_bot_network
+
+  django_backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8000:8000"
+    networks:
+      - pm_bot_network
+
+  agent_services:
+    build:
+      context: ./agent_services
+      dockerfile: Dockerfile
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8001/health" ]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    restart: always
+    ports:
+      - "8001:8000"
+    networks:
+      - pm_bot_network
+
+  redis:
+    image: redis:8-alpine
+    restart: always
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    networks: [ pm_bot_network ]
+
+  # plane.so
+  plane-proxy:
+    image: makeplane/plane-proxy:stable
+    depends_on: [ plane-api, plane-frontend ]
+    environment:
+      - SITE_ADDRESS=:80
+      - FILE_SIZE_LIMIT=5MB
+      - BUCKET_NAME=plane
+    ports:
+      - "8002:80"
+    networks:
+      pm_bot_network:
+
+  plane-frontend:
+    image: makeplane/plane-frontend:stable
+    depends_on: [ plane-api ]
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8002/api
+    networks:
+      pm_bot_network:
+        aliases:
+          - web
+
+  plane-migrations:
+    image: makeplane/plane-backend:stable
+    command: ./bin/docker-entrypoint-migrator.sh
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - SECRET_KEY=${PLANE_SECRET_KEY}
+    networks:
+      - pm_bot_network
+
+  plane-api:
+    image: makeplane/plane-backend:stable
+    depends_on: [ postgres, redis ]
+    environment:
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${PLANE_SECRET_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - WEB_URL=${PLANE_WEB_URL}
+      - ENABLE_EMAIL_PASSWORD=${PLANE_ENABLE_EMAIL_PASSWORD_LOGIN}
+      - ENABLE_SIGNUP=${PLANE_ENABLE_SIGNUP}
+      - CORS_ALLOWED_ORIGIN=${PLANE_WEB_URL}
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - STORAGE_TYPE=${STORAGE_TYPE}
+      - USE_S3=${USE_S3}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}
+    volumes:
+      - ./uploads:/code/plane/media
+    networks:
+      pm_bot_network:
+        aliases:
+          - api
+
+  plane-worker:
+    image: makeplane/plane-backend:stable
+    command: ./bin/docker-entrypoint-worker.sh
+    depends_on: [ plane-api, plane-migrations, postgres, redis ]
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - SECRET_KEY=${PLANE_SECRET_KEY}
+    volumes:
+      - ./uploads:/code/plane/media
+    networks: [ pm_bot_network ]

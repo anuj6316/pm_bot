@@ -1,0 +1,14 @@
+django
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+
+langchain
+langgraph
+langfuse
+
+litellm
+python-dotenv
+
+fastapi
+uvicorn
