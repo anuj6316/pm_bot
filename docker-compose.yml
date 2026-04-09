@@ -87,11 +87,12 @@ services:
     networks:
       pm_bot_network:
 
+
   plane-frontend:
     image: makeplane/plane-frontend:stable
     depends_on: [ plane-api ]
     environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8002/api
+      - NEXT_PUBLIC_API_BASE_URL=http://plane-proxy/api
     networks:
       pm_bot_network:
         aliases:
