@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # custom apps
-    'deep_agents',
+    'deep_agent',
 ]
 
 MIDDLEWARE = [

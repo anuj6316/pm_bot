@@ -1,11 +1,10 @@
 from fastapi import FastAPI
 
-app = FastAPI(title="PM Bot Agent Service")
+app = FastAPI(title = "FastAPI PM Bot")
 
-@app.get('/health')
+@app.get("/health")
 def health_check():
     return {
-        "status": "ok",
-        "service": "agent_services",
-        "version": "1.0.0"
+        "msg": "fastapi server is running",
+        "status_code": 200
     }

@@ -1,130 +1,95 @@
 networks:
-  pm_bot_network: { driver: bridge }
+  pm_bot_network:
+    driver: bridge
+
 volumes:
   pg_data: {}
-  qdrant_data: {}
   redis_data: {}
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
-  postgres:
-    image: ankane/pgvector:latest
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    volumes: [ pg_data:/var/lib/postgresql/data ]
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    ports:
-      - "5432:5432"
-    networks: [ pm_bot_network ]
-
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - 8080:8080
-    networks: [ pm_bot_network ]
-
-  qdrant:
-    image: qdrant/qdrant:latest
-    environment:
-      - QDRANT_SERVICE_API_KEY= ${QDRANT_API_KEY}
-    volumes: [ qdrant_data:/var/lib/qdrant/data ]
-    ports:
-      - "6333:6333"
-    networks:
-      - pm_bot_network
-
-  django_backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: always
-    ports:
-      - "8000:8000"
-    networks:
-      - pm_bot_network
-
-  agent_services:
-    build:
-      context: ./agent_services
-      dockerfile: Dockerfile
-    healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8001/health" ]
-      interval: 1m30s
-      timeout: 30s
-      retries: 5
-      start_period: 30s
-    restart: always
-    ports:
-      - "8001:8000"
-    networks:
-      - pm_bot_network
-
-  redis:
-    image: redis:8-alpine
-    restart: always
-    command: redis-server --save 60 1 --loglevel warning
-    volumes:
-      - redis_data:/data
-    networks: [ pm_bot_network ]
-
-  # plane.so
+  # ========================
+  # Plane.so
+  # ========================
   plane-proxy:
     image: makeplane/plane-proxy:stable
-    depends_on: [ plane-api, plane-frontend ]
+    restart: on-failure
+    depends_on:
+      plane-api:
+        condition: service_healthy
+      plane-frontend:
+        condition: service_started
     environment:
       - SITE_ADDRESS=:80
       - FILE_SIZE_LIMIT=5MB
       - BUCKET_NAME=plane
     ports:
-      - "8002:80"
+      - "8003:80"
     networks:
-      pm_bot_network:
-
+      - pm_bot_network
+    logging: *default-logging
 
   plane-frontend:
     image: makeplane/plane-frontend:stable
-    depends_on: [ plane-api ]
+    restart: on-failure
+    depends_on:
+      plane-api:
+        condition: service_healthy
     environment:
       - NEXT_PUBLIC_API_BASE_URL=http://plane-proxy/api
     networks:
-      pm_bot_network:
-        aliases:
-          - web
+      - pm_bot_network
+    logging: *default-logging
 
   plane-migrations:
     image: makeplane/plane-backend:stable
+    restart: "no"
     command: ./bin/docker-entrypoint-migrator.sh
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - SECRET_KEY=${PLANE_SECRET_KEY}
+      - STORAGE_TYPE=${STORAGE_TYPE}
+      - USE_S3=${USE_S3}
     networks:
       - pm_bot_network
+    logging: *default-logging
 
   plane-api:
     image: makeplane/plane-backend:stable
-    depends_on: [ postgres, redis ]
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
     environment:
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=${REDIS_URL}
       - SECRET_KEY=${PLANE_SECRET_KEY}
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - DATABASE_URL=${DATABASE_URL}
       - WEB_URL=${PLANE_WEB_URL}
       - ENABLE_EMAIL_PASSWORD=${PLANE_ENABLE_EMAIL_PASSWORD_LOGIN}
       - ENABLE_SIGNUP=${PLANE_ENABLE_SIGNUP}
+      - ENABLE_MAGIC_LINK=${PLANE_ENABLE_MAGIC_LINK_LOGIN}
+      - ADMIN_PASSWORD=${PLANE_ADMIN_PASSWORD}
       - CORS_ALLOWED_ORIGIN=${PLANE_WEB_URL}
-      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - STORAGE_TYPE=${STORAGE_TYPE}
       - USE_S3=${USE_S3}
       - AWS_REGION=${AWS_REGION}
@@ -134,19 +99,121 @@ services:
     volumes:
       - ./uploads:/code/plane/media
     networks:
-      pm_bot_network:
-        aliases:
-          - api
+      - pm_bot_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 300s
+    logging: *default-logging
 
   plane-worker:
     image: makeplane/plane-backend:stable
+    restart: on-failure
     command: ./bin/docker-entrypoint-worker.sh
-    depends_on: [ plane-api, plane-migrations, postgres, redis ]
+    depends_on:
+      plane-api:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - SECRET_KEY=${PLANE_SECRET_KEY}
+      - STORAGE_TYPE=${STORAGE_TYPE}
+      - USE_S3=${USE_S3}
     volumes:
       - ./uploads:/code/plane/media
-    networks: [ pm_bot_network ]
+    networks:
+      - pm_bot_network
+    logging: *default-logging
+
+  # ========================
+  # Infrastructure
+  # ========================
+  redis:
+    image: redis/redis-stack
+    restart: on-failure
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "127.0.0.1:8005:8001"
+    networks:
+      - pm_bot_network
+    logging: *default-logging
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: on-failure
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-pm_bot_db}
+      - POSTGRES_USER=${POSTGRES_USER:-pm_bot}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme_this_in_production}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pm_bot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - pm_bot_network
+    logging: *default-logging
+
+  # ========================
+  # Django Backend
+  # ========================
+  django-web:
+    build: ./backend
+    restart: on-failure
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "8002:8000"
+    networks:
+      - pm_bot_network
+    logging: *default-logging
+
+  # ========================
+  # FastAPI Agent Services
+  # ========================
+  fastapi-web:
+    build: ./agent_services
+    restart: on-failure
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "8001:8000"
+    networks:
+      - pm_bot_network
+    logging: *default-logging
