@@ -41,9 +41,14 @@ services:
       plane-api:
         condition: service_healthy
     environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://plane-proxy/api
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8003/api
+    extra_hosts:
+      - "localhost:host-gateway"
     networks:
-      - pm_bot_network
+      pm_bot_network:
+        aliases:
+          - web
+          - admin
     logging: *default-logging
 
   plane-migrations:
@@ -84,6 +89,10 @@ services:
       - SECRET_KEY=${PLANE_SECRET_KEY}
       - DATABASE_URL=${DATABASE_URL}
       - WEB_URL=${PLANE_WEB_URL}
+      - APP_BASE_URL=${PLANE_WEB_URL}
+      - ADMIN_BASE_URL=${PLANE_WEB_URL}/god-mode
+      - SPACE_BASE_URL=${PLANE_WEB_URL}/spaces
+      - API_BASE_URL=${PLANE_WEB_URL}/api
       - ENABLE_EMAIL_PASSWORD=${PLANE_ENABLE_EMAIL_PASSWORD_LOGIN}
       - ENABLE_SIGNUP=${PLANE_ENABLE_SIGNUP}
       - ENABLE_MAGIC_LINK=${PLANE_ENABLE_MAGIC_LINK_LOGIN}
@@ -99,9 +108,11 @@ services:
     volumes:
       - ./uploads:/code/plane/media
     networks:
-      - pm_bot_network
+      pm_bot_network:
+        aliases:
+          - api
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/')"]
+      test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost', 8000); conn.request('GET', '/'); resp = conn.getresponse(); exit(0 if resp.status == 200 else 1)"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -126,6 +137,11 @@ services:
       - REDIS_URL=${REDIS_URL}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - SECRET_KEY=${PLANE_SECRET_KEY}
+      - WEB_URL=${PLANE_WEB_URL}
+      - APP_BASE_URL=${PLANE_WEB_URL}
+      - ADMIN_BASE_URL=${PLANE_WEB_URL}/god-mode
+      - SPACE_BASE_URL=${PLANE_WEB_URL}/spaces
+      - API_BASE_URL=${PLANE_WEB_URL}/api
       - STORAGE_TYPE=${STORAGE_TYPE}
       - USE_S3=${USE_S3}
     volumes:
