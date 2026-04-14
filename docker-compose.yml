@@ -112,7 +112,7 @@ services:
         aliases:
           - api
     healthcheck:
-      test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost', 8000); conn.request('GET', '/'); resp = conn.getresponse(); exit(0 if resp.status == 200 else 1)"]
+      test: [ "CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost', 8000); conn.request('GET', '/'); resp = conn.getresponse(); exit(0 if resp.status == 200 else 1)" ]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -159,7 +159,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -182,7 +182,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pm_bot}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pm_bot}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -197,14 +197,16 @@ services:
   django-web:
     build: ./backend
     restart: on-failure
-    command: ["python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload"]
+    volumes:
+      - ./backend:/app
+    command: [ "python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload" ]
     depends_on:
       postgres:
         condition: service_healthy
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/admin"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/admin" ]
       interval: 1m30s
       timeout: 30s
       retries: 5
@@ -221,9 +223,9 @@ services:
   fastapi-web:
     build: ./agent_services
     restart: on-failure
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000" ]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 1m30s
       timeout: 30s
       retries: 5

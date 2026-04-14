@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -40,6 +41,14 @@ INSTALLED_APPS = [
 
     # custom apps
     'deep_agent',
+    'plane_client',
+
+    # 3rd parties
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'corsheaders',
+    'django_celery_results',
+
 ]
 
 MIDDLEWARE = [
@@ -82,6 +91,17 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'pm_bot_db',
+#         'USER': 'pm_bot',
+#         'PASSWORD': 'changeme_this_in_production',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -118,3 +138,29 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+
+## Celery
+# The broker is Redis — where Django pushes tasks and Celery pulls from
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://redis:6379/0')
+
+# The result backend — where Celery stores task status and return values
+# 'django-db' means results are stored in PostgreSQL via django_celery_results
+CELERY_RESULT_BACKEND = 'django-db'
+
+# Serialize task arguments and results as JSON (safer than pickle)
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+
+# Store task results for 7 days before they expire
+CELERY_RESULT_EXPIRES = 60 * 60 * 24 * 7
+
+# Timezone must match Django
+CELERY_TIMEZONE = TIME_ZONE
+
+# Automatically find tasks in any tasks.py file inside INSTALLED_APPS
+CELERY_AUTODISCOVER_TASKS = True
+
+# Add this at the bottom of settings.py
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

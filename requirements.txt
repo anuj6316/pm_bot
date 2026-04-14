@@ -2,6 +2,13 @@ django
 djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
+django-celery-results
+celery[redis]
+pyscopg2-binary
+httpx
+pydantic
+pydantic-settings
+python-dotenv
 
 langchain
 langgraph
