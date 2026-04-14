@@ -1,0 +1,86 @@
+{
+  "projectMetadata": {
+    "projectName": "PM Bot",
+    "projectVersion": "1.2.0",
+    "framework": "Django 6.0",
+    "language": "Python",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "lastUpdated": "2026-04-14T00:00:00Z",
+    "description": "Monorepo for a PM automation bot using Plane and AI agents."
+  },
+  "architecture": {
+    "pattern": "Django Monolith",
+    "entryPoints": ["backend/manage.py"],
+    "buildSystem": "Docker",
+    "packageManager": "uv"
+  },
+  "directoryStructure": {
+    "backend/": "Django backend services",
+    "backend/deep_agent/": "AI agent logic and views",
+    "backend/plane_client/": "Integration with Plane project management API",
+    "references/": "Project intelligence and snapshots"
+  },
+  "chunks": [
+    {
+      "chunkId": "django-core",
+      "version": "1.0.0",
+      "category": "core",
+      "files": ["backend/backend/settings.py", "backend/backend/urls.py", "backend/backend/celery.py", "backend/manage.py"],
+      "purpose": "Core Django configuration and entry points",
+      "summary": "Handles system settings, routing, and task queue configuration.",
+      "dependencies": {
+        "imports": [],
+        "usedBy": ["plane-client", "deep-agent"]
+      },
+      "lastModified": "2026-04-14T00:00:00Z",
+      "changeHistory": [{"version": "1.0.0", "date": "2026-04-14", "type": "MAJOR", "description": "Initial snapshot"}]
+    },
+    {
+      "chunkId": "plane-client",
+      "version": "1.1.0",
+      "category": "service",
+      "files": ["backend/plane_client/client.py", "backend/plane_client/models.py", "backend/plane_client/tests.py"],
+      "purpose": "Integration with Plane API",
+      "summary": "Provides a Python client to interact with the Plane PM tool. Now includes robust 9-test suite covering 204 No Content, timeouts, and malformed JSON.",
+      "dependencies": {
+        "imports": ["django-core"],
+        "usedBy": ["deep-agent"]
+      },
+      "lastModified": "2026-04-14T00:00:00Z",
+      "changeHistory": [
+        {"version": "1.1.0", "date": "2026-04-14", "type": "MINOR", "description": "Added 9 tests and fixed 204/JSON parsing bugs"},
+        {"version": "1.0.0", "date": "2026-04-14", "type": "MAJOR", "description": "Initial snapshot"}
+      ]
+    }
+  ],
+  "globalChangeLog": [
+    {
+      "version": "1.2.0",
+      "date": "2026-04-14",
+      "type": "MINOR",
+      "description": "Verified PlaneClient with robust edge-case testing and fixed 2 bugs.",
+      "chunksAffected": ["plane-client"]
+    },
+    {
+      "version": "1.1.0",
+      "date": "2026-04-14",
+      "type": "MINOR",
+      "description": "Removed FastAPI agent services",
+      "chunksAffected": ["fastapi-agents"]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-04-14",
+      "type": "MAJOR",
+      "description": "Initial snapshot created",
+      "chunksAffected": []
+    }
+  ],
+  "crossCuttingConcerns": {
+    "errorHandling": "Standard Django exceptions + Custom PlaneAPIError",
+    "logging": "Managed by settings.py and Docker logs",
+    "authentication": "TBD",
+    "stateManagement": "SQLite/Redis",
+    "routing": "Django URLs"
+  }
+}

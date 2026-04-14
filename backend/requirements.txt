@@ -11,11 +11,3 @@ pydantic-settings
 python-dotenv
 
 langchain
-langgraph
-langfuse
-
-litellm
-python-dotenv
-
-fastapi
-uvicorn

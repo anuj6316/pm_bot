@@ -63,9 +63,9 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - DATABASE_URL=${PLANE_DATABASE_URL}
+      - REDIS_URL=${PLANE_REDIS_URL}
+      - CELERY_BROKER_URL=${PLANE_CELERY_BROKER_URL}
       - SECRET_KEY=${PLANE_SECRET_KEY}
       - STORAGE_TYPE=${STORAGE_TYPE}
       - USE_S3=${USE_S3}
@@ -85,9 +85,9 @@ services:
       - .env
     environment:
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
-      - REDIS_URL=${REDIS_URL}
+      - REDIS_URL=${PLANE_REDIS_URL}
       - SECRET_KEY=${PLANE_SECRET_KEY}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${PLANE_DATABASE_URL}
       - WEB_URL=${PLANE_WEB_URL}
       - APP_BASE_URL=${PLANE_WEB_URL}
       - ADMIN_BASE_URL=${PLANE_WEB_URL}/god-mode
@@ -133,9 +133,9 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - DATABASE_URL=${PLANE_DATABASE_URL}
+      - REDIS_URL=${PLANE_REDIS_URL}
+      - CELERY_BROKER_URL=${PLANE_CELERY_BROKER_URL}
       - SECRET_KEY=${PLANE_SECRET_KEY}
       - WEB_URL=${PLANE_WEB_URL}
       - APP_BASE_URL=${PLANE_WEB_URL}
@@ -181,6 +181,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme_this_in_production}
     volumes:
       - pg_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pm_bot}" ]
       interval: 5s
@@ -213,25 +214,6 @@ services:
       start_period: 30s
     ports:
       - "8002:8000"
-    networks:
-      - pm_bot_network
-    logging: *default-logging
-
-  # ========================
-  # FastAPI Agent Services
-  # ========================
-  fastapi-web:
-    build: ./agent_services
-    restart: on-failure
-    command: [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000" ]
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
-      interval: 1m30s
-      timeout: 30s
-      retries: 5
-      start_period: 30s
-    ports:
-      - "8001:8000"
     networks:
       - pm_bot_network
     logging: *default-logging

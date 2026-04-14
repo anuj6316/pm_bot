@@ -34,6 +34,10 @@ class PlaneClient:
         try:
             response = self.session.request(method, url, json=data)
             response.raise_for_status()
+            
+            if response.status_code == 204 or not response.content:
+                return None
+                
             return response.json()
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
@@ -44,6 +48,8 @@ class PlaneClient:
                 raise PlaneValidationError(str(e))
             else:
                 raise PlaneAPIError(str(e))
+        except (requests.exceptions.JSONDecodeError, ValueError) as e:
+            raise PlaneAPIError(f"Failed to parse JSON response: {str(e)}")
         except requests.exceptions.RequestException as e:
             raise PlaneAPIError(str(e))
 
