@@ -95,11 +95,11 @@ load_dotenv()
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB'),
-        'USER': os.getenv('POSTGRES_USER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-        'HOST': 'postgres',
-        'PORT': '5432',
+        'NAME': os.getenv('DJANGO_POSTGRES_DB', os.getenv('POSTGRES_DB', 'pm_bot_db')),
+        'USER': os.getenv('DJANGO_POSTGRES_USER', os.getenv('POSTGRES_USER', 'pm_bot')),
+        'PASSWORD': os.getenv('DJANGO_POSTGRES_PASSWORD', os.getenv('POSTGRES_PASSWORD', 'changeme_django')),
+        'HOST': os.getenv('POSTGRES_HOST', 'postgres-django'),
+        'PORT': os.getenv('POSTGRES_PORT', '5432'),
     }
 }
 
