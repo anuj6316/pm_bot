@@ -62,9 +62,9 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane_user}:${PLANE_POSTGRES_PASSWORD:-changeme_plane}@postgres:5432/${PLANE_POSTGRES_DB:-plane_db}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - SECRET_KEY=${PLANE_SECRET_KEY:-changeme_secret}
       - STORAGE_TYPE=${STORAGE_TYPE:-base}
       - USE_S3=${USE_S3:-0}
@@ -86,9 +86,9 @@ services:
       - .env
     environment:
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
-      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane_user}:${PLANE_POSTGRES_PASSWORD:-changeme_plane}@postgres:5432/${PLANE_POSTGRES_DB:-plane_db}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - SECRET_KEY=${PLANE_SECRET_KEY:-changeme_secret}
       - WEB_URL=${PLANE_WEB_URL:-http://localhost:8003}
       - APP_BASE_URL=${PLANE_WEB_URL:-http://localhost:8003}
@@ -134,9 +134,9 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane_user}:${PLANE_POSTGRES_PASSWORD:-changeme_plane}@postgres:5432/${PLANE_POSTGRES_DB:-plane_db}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - SECRET_KEY=${PLANE_SECRET_KEY:-changeme_secret}
       - WEB_URL=${PLANE_WEB_URL:-http://localhost:8003}
       - APP_BASE_URL=${PLANE_WEB_URL:-http://localhost:8003}
@@ -167,9 +167,9 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane_user}:${PLANE_POSTGRES_PASSWORD:-changeme_plane}@postgres:5432/${PLANE_POSTGRES_DB:-plane_db}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - SECRET_KEY=${PLANE_SECRET_KEY:-changeme_secret}
     networks:
       - pm_bot_network
@@ -201,17 +201,15 @@ services:
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=${PLANE_POSTGRES_DB:-plane_db}
+      - POSTGRES_DB=${POSTGRES_DB:-plane_db}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme_postgres}
-      - PLANE_POSTGRES_USER=${PLANE_POSTGRES_USER:-plane_user}
-      - PLANE_POSTGRES_PASSWORD=${PLANE_POSTGRES_PASSWORD:-changeme_plane}
       - POSTGRES_MULTIPLE_DATABASES=${PLANE_ADDITIONAL_DBS:-plane_admin}
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${PLANE_POSTGRES_USER:-plane_user} -d ${PLANE_POSTGRES_DB:-plane_db}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-plane_db}" ]
       interval: 5s
       timeout: 5s
       retries: 5
