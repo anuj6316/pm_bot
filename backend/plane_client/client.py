@@ -1,7 +1,12 @@
 from dotenv import load_dotenv
 import os
 import requests
-from .exceptions import *
+from .exceptions import (
+    PlaneAPIError,
+    PlaneAuthError,
+    PlaneNotFoundError,
+    PlaneValidationError,
+)
 
 load_dotenv()
 
@@ -24,7 +29,7 @@ class PlaneClient:
         self.session = requests.Session()
         self.session.headers.update(
             {
-                "X-API-Key": f"plane_api_{self.token}",
+                "X-API-Key": self.token,
                 "Content-Type": "application/json",
             }
         )
@@ -34,10 +39,10 @@ class PlaneClient:
         try:
             response = self.session.request(method, url, json=data)
             response.raise_for_status()
-            
+
             if response.status_code == 204 or not response.content:
                 return None
-                
+
             return response.json()
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
@@ -57,6 +62,14 @@ class PlaneClient:
         return self._request(
             "GET", f"/api/v1/workspaces/{self.workspace_slug}/projects/"
         )
+
+    def create_project(self, name: str, identifier: str):
+        """
+        Creates a new project in the workspace.
+        """
+        endpoint = f"/api/v1/workspaces/{self.workspace_slug}/projects/"
+        data = {"name": name, "identifier": identifier}
+        return self._request("POST", endpoint, data=data)
 
     def list_issues(self, project_id: str):
         return self._request(
@@ -83,3 +96,45 @@ class PlaneClient:
             "DELETE",
             f"/api/v1/workspaces/{self.workspace_slug}/projects/{project_id}/issues/{issue_id}/",
         )
+
+    # --- New Methods for Phase 4 ---
+
+    def add_comment(self, project_id: str, issue_id: str, comment_text: str):
+        """
+        Adds a comment to a Plane issue.
+        Note: Plane expects 'comment_json' or 'comment_html'.
+        """
+        endpoint = f"/api/v1/workspaces/{self.workspace_slug}/projects/{project_id}/issues/{issue_id}/comments/"
+        data = {
+            "comment_json": {"content": comment_text},
+            "comment_html": f"<p>{comment_text}</p>",
+        }
+        return self._request("POST", endpoint, data=data)
+
+    def list_labels(self, project_id: str):
+        """
+        Lists all labels available in a project.
+        """
+        endpoint = (
+            f"/api/v1/workspaces/{self.workspace_slug}/projects/{project_id}/labels/"
+        )
+        return self._request("GET", endpoint)
+
+    def create_label(self, project_id: str, name: str, color: str = "#ff0000"):
+        """
+        Creates a new label in a project.
+        """
+        endpoint = (
+            f"/api/v1/workspaces/{self.workspace_slug}/projects/{project_id}/labels/"
+        )
+        data = {"name": name, "color": color}
+        return self._request("POST", endpoint, data=data)
+
+    def add_label_to_issue(self, project_id: str, issue_id: str, label_ids: list):
+        """
+        Attaches labels to an issue. Note: This usually overwrites or patches.
+        We provide a list of label IDs.
+        """
+        endpoint = f"/api/v1/workspaces/{self.workspace_slug}/projects/{project_id}/issues/{issue_id}/"
+        data = {"label_ids": label_ids}
+        return self._request("PATCH", endpoint, data=data)

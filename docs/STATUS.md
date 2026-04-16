@@ -10,11 +10,10 @@
 ### 🏗️ 1. Architecture & Infrastructure
 - **Django Monorepo:** Successfully refactored the project from a split FastAPI/Django architecture to a streamlined, production-grade Django monorepo.
 - **Modern Dependency Management:** Fully integrated `uv` for fast, deterministic package management and environment syncing.
-- **Docker Orchestration:** Configured `docker-compose.yml` for a complete ecosystem:
+- **Docker Orchestration:** Streamlined `docker-compose.yml` to focus on the PM Bot core:
     - **PostgreSQL (pgvector):** Optimized for AI/Vector search.
     - **Redis Stack:** Set up for Celery task queuing and results tracking.
-    - **Adminer:** Database GUI for easy inspection.
-    - **Plane Ecosystem:** Integrated Plane Proxy, Frontend, API, and Worker services.
+    - **Plane Integration:** Transitioned from a local ecosystem to **Plane Cloud** for improved reliability and reduced local resource overhead.
 
 ### 🐘 2. Database & Environment (Phase 1)
 - **Production Configuration:** Transitioned `backend/backend/settings.py` from SQLite to a robust PostgreSQL setup.
@@ -41,9 +40,13 @@
 ## 🛠️ In-Progress / Next Objectives
 
 ### **Immediate (Phase 1 Continued)**
-1.  **[ ] State Model:** Implement the `AgentIssueSession` model in `backend/deep_agent/models.py`.
-2.  **[ ] Database Migration:** Execute `makemigrations` and `migrate` within the Dockerized environment.
-3.  **[ ] Celery Poller:** Define the first background task to poll Plane for "Unprocessed" issues.
+1.  **[x] State Model:** Implement the `AgentIssueSession` model in `backend/deep_agent/models.py`.
+2.  **[x] Database Migration:** Execute `makemigrations` and `migrate` within the Dockerized environment.
+3.  **[x] Celery Poller:** Defined the first background task to poll Plane for "Unprocessed" issues.
+
+### **Urgent Insertion**
+4.  **[x] Phase 1.1:** Connect and verify **Plane Cloud Integration**.
+
 
 ### **Upcoming (Phase 2 & 3)**
 4.  **[ ] Instant Feedback:** Implement the "Thinking..." comment logic in the `PlaneClient`.

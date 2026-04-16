@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class DeepAgentConfig(AppConfig):
-    name = 'deep_agent'
+    name = "deep_agent"

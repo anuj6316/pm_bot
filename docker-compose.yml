@@ -3,10 +3,8 @@ networks:
     driver: bridge
 
 volumes:
-  pg_data: {}
   pg_django_data: {}
   redis_data: {}
-  uploads: {}
 
 x-logging: &default-logging
   driver: json-file
@@ -15,221 +13,6 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
-  # ========================
-  # Plane.so (Stable)
-  # ========================
-  plane-proxy:
-    image: makeplane/plane-proxy:stable
-    restart: on-failure
-    depends_on:
-      plane-api:
-        condition: service_healthy
-      plane-frontend:
-        condition: service_started
-    environment:
-      - SITE_ADDRESS=:80
-      - FILE_SIZE_LIMIT=5MB
-      - BUCKET_NAME=plane-uploads
-    ports:
-      - "8003:80"
-    networks:
-      - pm_bot_network
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-    logging: *default-logging
-
-  plane-frontend:
-    image: makeplane/plane-frontend:stable
-    restart: on-failure
-    depends_on:
-      plane-api:
-        condition: service_healthy
-    environment:
-      - NEXT_PUBLIC_API_BASE_URL=/api
-    networks:
-      pm_bot_network:
-        aliases:
-          - web
-    logging: *default-logging
-
-  plane-admin:
-    image: makeplane/plane-admin:stable
-    restart: on-failure
-    depends_on:
-      plane-api:
-        condition: service_healthy
-    environment:
-      - NEXT_PUBLIC_API_BASE_URL=/api
-    networks:
-      pm_bot_network:
-        aliases:
-          - admin
-    logging: *default-logging
-
-  plane-space:
-    image: makeplane/plane-space:stable
-    restart: on-failure
-    depends_on:
-      plane-api:
-        condition: service_healthy
-    environment:
-      - NEXT_PUBLIC_API_BASE_URL=/api
-    networks:
-      pm_bot_network:
-        aliases:
-          - space
-    logging: *default-logging
-
-  plane-migrations:
-    image: makeplane/plane-backend:stable
-    restart: "no"
-    command: ./bin/docker-entrypoint-migrator.sh
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane_user}:${PLANE_POSTGRES_PASSWORD:-changeme_plane}@postgres:5432/${PLANE_POSTGRES_DB:-plane_db}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - SECRET_KEY=${PLANE_SECRET_KEY:-changeme_secret}
-      - STORAGE_TYPE=s3
-      - USE_S3=1
-      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME:-plane-uploads}
-      - AWS_S3_ENDPOINT_URL=http://plane-minio:9000
-      - AWS_ACCESS_KEY_ID=plane_minio_user
-      - AWS_SECRET_ACCESS_KEY=plane_minio_password
-      - AWS_REGION=${AWS_REGION:-us-east-1}
-    networks:
-      - pm_bot_network
-    logging: *default-logging
-
-  plane-api:
-    image: makeplane/plane-backend:stable
-    restart: on-failure
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    env_file:
-      - .env
-    environment:
-      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
-      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane_user}:${PLANE_POSTGRES_PASSWORD:-changeme_plane}@postgres:5432/${PLANE_POSTGRES_DB:-plane_db}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - SECRET_KEY=${PLANE_SECRET_KEY:-changeme_secret}
-      - WEB_URL=${PLANE_WEB_URL:-http://localhost:8003}
-      - APP_BASE_URL=${PLANE_WEB_URL:-http://localhost:8003}
-      - ADMIN_BASE_URL=${PLANE_WEB_URL:-http://localhost:8003}/god-mode
-      - SPACE_BASE_URL=${PLANE_WEB_URL:-http://localhost:8003}/spaces
-      - API_BASE_URL=${PLANE_WEB_URL:-http://localhost:8003}/api
-      - ENABLE_EMAIL_PASSWORD=${PLANE_ENABLE_EMAIL_PASSWORD_LOGIN:-1}
-      - ENABLE_SIGNUP=${PLANE_ENABLE_SIGNUP:-1}
-      - ENABLE_MAGIC_LINK=${PLANE_ENABLE_MAGIC_LINK_LOGIN:-0}
-      - ADMIN_PASSWORD=${PLANE_ADMIN_PASSWORD:-changeme_admin}
-      - CORS_ALLOWED_ORIGIN=${PLANE_WEB_URL:-http://localhost:8003}
-      - STORAGE_TYPE=s3
-      - USE_S3=1
-      - AWS_REGION=${AWS_REGION:-us-east-1}
-      - AWS_S3_ENDPOINT_URL=http://plane-minio:9000
-      - AWS_ACCESS_KEY_ID=plane_minio_user
-      - AWS_SECRET_ACCESS_KEY=plane_minio_password
-      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME:-plane-uploads}
-    volumes:
-      - ./uploads:/code/plane/media
-    networks:
-      pm_bot_network:
-        aliases:
-          - api
-    healthcheck:
-      test: [ "CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost', 8000); conn.request('GET', '/'); resp = conn.getresponse(); exit(0 if resp.status == 200 else 1)" ]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 300s
-    logging: *default-logging
-
-  plane-worker:
-    image: makeplane/plane-backend:stable
-    restart: on-failure
-    command: ./bin/docker-entrypoint-worker.sh
-    depends_on:
-      plane-api:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane_user}:${PLANE_POSTGRES_PASSWORD:-changeme_plane}@postgres:5432/${PLANE_POSTGRES_DB:-plane_db}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - SECRET_KEY=${PLANE_SECRET_KEY:-changeme_secret}
-      - WEB_URL=${PLANE_WEB_URL:-http://localhost:8003}
-      - APP_BASE_URL=${PLANE_WEB_URL:-http://localhost:8003}
-      - ADMIN_BASE_URL=${PLANE_WEB_URL:-http://localhost:8003}/god-mode
-      - SPACE_BASE_URL=${PLANE_WEB_URL:-http://localhost:8003}/spaces
-      - API_BASE_URL=${PLANE_WEB_URL:-http://localhost:8003}/api
-      - STORAGE_TYPE=s3
-      - USE_S3=1
-      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME:-plane-uploads}
-      - AWS_S3_ENDPOINT_URL=http://plane-minio:9000
-      - AWS_ACCESS_KEY_ID=plane_minio_user
-      - AWS_SECRET_ACCESS_KEY=plane_minio_password
-      - AWS_REGION=${AWS_REGION:-us-east-1}
-    volumes:
-      - ./uploads:/code/plane/media
-    networks:
-      - pm_bot_network
-    logging: *default-logging
-
-  plane-beat:
-    image: makeplane/plane-backend:stable
-    restart: on-failure
-    command: ./bin/docker-entrypoint-beat.sh
-    depends_on:
-      plane-api:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane_user}:${PLANE_POSTGRES_PASSWORD:-changeme_plane}@postgres:5432/${PLANE_POSTGRES_DB:-plane_db}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - SECRET_KEY=${PLANE_SECRET_KEY:-changeme_secret}
-    networks:
-      - pm_bot_network
-    logging: *default-logging
-
-  plane-minio:
-    image: minio/minio
-    restart: on-failure
-    command: server /data --console-address ":9001"
-    environment:
-      - MINIO_ROOT_USER=plane_minio_user
-      - MINIO_ROOT_PASSWORD=plane_minio_password
-    volumes:
-      - uploads:/data
-    networks:
-      pm_bot_network:
-        aliases:
-          - plane-minio
-    logging: *default-logging
-
-  # ========================
-  # Infrastructure
-  # ========================
   redis:
     image: redis/redis-stack
     restart: on-failure
@@ -246,34 +29,9 @@ services:
     networks:
       - pm_bot_network
     logging: *default-logging
-
-  postgres:
-    image: pgvector/pgvector:pg16
-    restart: on-failure
-    env_file:
-      - .env
-    environment:
-      - POSTGRES_DB=${PLANE_POSTGRES_DB:-plane_db}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme_postgres}
-      - PLANE_POSTGRES_USER=${PLANE_POSTGRES_USER:-plane_user}
-      - PLANE_POSTGRES_PASSWORD=${PLANE_POSTGRES_PASSWORD:-changeme_plane}
-      - POSTGRES_MULTIPLE_DATABASES=${PLANE_ADDITIONAL_DBS:-plane_admin}
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-      - ./postgres-init:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${PLANE_POSTGRES_USER:-plane_user} -d ${PLANE_POSTGRES_DB:-plane_db}" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - pm_bot_network
-    logging: *default-logging
-
   postgres-django:
     image: pgvector/pgvector:pg16
+    hostname: postgres-django
     restart: on-failure
     env_file:
       - .env
@@ -301,7 +59,7 @@ services:
     restart: on-failure
     volumes:
       - ./backend:/app
-    command: [ "python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload" ]
+    command: [ "uv", "run", "python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload" ]
     depends_on:
       postgres-django:
         condition: service_healthy
@@ -320,6 +78,50 @@ services:
       start_period: 30s
     ports:
       - "8002:8000"
+    networks:
+      - pm_bot_network
+    logging: *default-logging
+
+  celery-worker:
+    build: ./backend
+    restart: on-failure
+    volumes:
+      - ./backend:/app
+    command: [ "uv", "run", "celery", "-A", "backend", "worker", "--loglevel=info" ]
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres-django:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=postgres-django
+      - POSTGRES_DB=${DJANGO_POSTGRES_DB:-pm_bot_db}
+      - POSTGRES_USER=${DJANGO_POSTGRES_USER:-pm_bot}
+      - POSTGRES_PASSWORD=${DJANGO_POSTGRES_PASSWORD:-changeme_django}
+    networks:
+      - pm_bot_network
+    logging: *default-logging
+
+  celery-beat:
+    build: ./backend
+    restart: on-failure
+    volumes:
+      - ./backend:/app
+    command: [ "uv", "run", "celery", "-A", "backend", "beat", "--loglevel=info" ]
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres-django:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=postgres-django
+      - POSTGRES_DB=${DJANGO_POSTGRES_DB:-pm_bot_db}
+      - POSTGRES_USER=${DJANGO_POSTGRES_USER:-pm_bot}
+      - POSTGRES_PASSWORD=${DJANGO_POSTGRES_PASSWORD:-changeme_django}
     networks:
       - pm_bot_network
     logging: *default-logging

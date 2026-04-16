@@ -5,7 +5,8 @@ from datetime import datetime
 from typing import Optional
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
 
 class IssuePriority(str, Enum):
     URGENT = "urgent"
@@ -13,6 +14,7 @@ class IssuePriority(str, Enum):
     MEDIUM = "medium"
     LOW = "low"
     NONE = "none"
+
 
 # class IssueState(str, Enum):
 #     OPEN = "open"
@@ -42,6 +44,7 @@ class IssuePriority(str, Enum):
 #     EPIC = "epic"
 #     STORY = "story"
 
+
 class Project(BaseModel):
     id: str
     name: str
@@ -50,4 +53,3 @@ class Project(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
-    
