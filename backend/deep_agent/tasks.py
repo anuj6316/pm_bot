@@ -158,3 +158,15 @@ def process_approved_session(session_id):
             session.error_log = f"Final Post Failed: {str(e)}"
             session.save()
         raise e
+
+@shared_task(name="deep_agent.tasks.trigger_manual_sync")
+def trigger_manual_sync(session_id):
+    """
+    Triggers a re-analysis of a session manually.
+    """
+    logger.info(f"Manual sync requested for session {session_id}")
+    session = AgentIssueSession.objects.get(id=session_id)
+    session.status = "PROCESSING"
+    session.save()
+    # Logic to re-trigger analysis
+    return "Sync initiated"
