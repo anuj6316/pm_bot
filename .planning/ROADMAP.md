@@ -52,3 +52,28 @@
     - Expanding the single LangGraph processor to support multiple sub-agents.
 - [ ] **Phase 10: Advanced Databricks Reporting**
     - Custom dashboards to differentiate prompt latencies and tracking models.
+- [ ] **Phase 11: REST API for React Web App**
+    - Build the REST API which I can integrate into my React web app
+    - **Plans:** 3 plans
+    - Requirements: REQ-001, REQ-002, REQ-003
+
+---
+
+### Phase 11: REST API for React Web App
+Build the REST API which I can integrate into my React web app.
+
+**Goal:** Provide secure, robust Django REST Framework endpoints to interface with the agent backend from an external NextJS/React frontend.
+
+**Dependencies:** None
+
+**Integrates:** None
+
+**Requirements:**
+- REQ-001 (State Management)
+- REQ-002 (Asynchronous Processing)
+- REQ-003 (Plane Feedback Loop)
+
+**Plans:**
+- [ ] 11-01-PLAN.md — Install DRF stack with JWT auth and CORS
+- [ ] 11-02-PLAN.md — Create API app structure with session endpoints
+- [ ] 11-03-PLAN.md — Write comprehensive test suite
