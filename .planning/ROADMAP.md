@@ -20,21 +20,35 @@
 
 ## Milestone 3: The Brain (LangGraph)
 *Goal: Implement the core reasoning logic and LLM workflow.*
-- [ ] **Phase 03: Reasoning Workflow**
+- [x] **Phase 03: Reasoning Workflow**
     - LangGraph development.
     - LiteLLM integration.
     - REQ-004 mapping.
 
 ## Milestone 4: Integration & UX
 *Goal: Connect the brain to the Plane API and finalize the feedback loop.*
-- [ ] **Phase 04: Feedback Loop**
+- [x] **Phase 04: Feedback Loop**
     - `PlaneClient` enhancements (labels/comments).
     - Integration of Celery -> LangGraph -> Plane.
     - REQ-003 mapping.
 
 ## Milestone 5: Observability & Polishing
 *Goal: Add tracing and finalize the V1 release.*
-- [ ] **Phase 05: Tracing Cleanup**
-    - LangFuse integration.
+- [x] **Phase 05: Tracing Cleanup**
+    - LangFuse integration (Skipped in favor of Phase 06 Databricks Tracking).
     - Performance tuning and final testing.
     - REQ-005 mapping.
+- [x] **Phase 06: Databricks Monitoring**
+    - Databricks Cloud Free Edition tracking setup.
+    - MLflow Tracing UI integration.
+
+## Milestone 6: V2 Advanced Features (Upcoming)
+*Goal: Address technical debt from the V1 MVP and implement scale features.*
+- [ ] **Phase 07: Vector Search Context Retrieval**
+    - `pgvector` integration for LLM node context enhancement.
+- [ ] **Phase 08: Custom HITL Frontend**
+    - Transitioning from Django Admin to a distinct NextJS interface for human-in-the-loop approvals.
+- [ ] **Phase 09: Multi-Agent Collaboration**
+    - Expanding the single LangGraph processor to support multiple sub-agents.
+- [ ] **Phase 10: Advanced Databricks Reporting**
+    - Custom dashboards to differentiate prompt latencies and tracking models.

@@ -1,9 +1,19 @@
 import logging
+import os
+import mlflow
 from typing import Dict, Any, TypedDict
 from langgraph.graph import StateGraph, END
 from .nodes import analyze_issue, triage_issue, generate_response
 
 logger = logging.getLogger(__name__)
+
+# Enable MLflow tracing for LangChain/LangGraph if Databricks is configured
+try:
+    if os.getenv("DATABRICKS_HOST"):
+        mlflow.langchain.autolog()
+        logger.info("Databricks MLflow autologging activated for LangGraph.")
+except Exception as e:
+    logger.warning(f"Could not activate MLflow autologging: {e}")
 
 
 class AgentState(TypedDict):

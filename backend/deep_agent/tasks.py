@@ -1,4 +1,5 @@
 import logging
+import mlflow
 from celery import shared_task
 from plane_client.client import PlaneClient
 from .models import AgentIssueSession
@@ -8,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(name="deep_agent.tasks.poll_plane_issues")
+@mlflow.trace(name="poll_plane_issues")
 def poll_plane_issues():
     """
     Periodic task to poll Plane for new/unprocessed issues.
@@ -81,6 +83,7 @@ def poll_plane_issues():
 
 
 @shared_task(name="deep_agent.tasks.process_approved_session")
+@mlflow.trace(name="process_approved_session")
 def process_approved_session(session_id):
     """
     Final integration task: Posts the approved comment and adds labels to Plane.
