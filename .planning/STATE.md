@@ -17,7 +17,7 @@
 ## Accumulated Context
 ### Roadmap Evolution
 - Phase 06 added: Databricks Cloud Free Edition monitoring with MLflow Tracing UI (updates via 2025-2026 UI paradigm).
-
+- Phase 11 added: REST API for React Web App integration.
 ## Pending Actions
 - [ ] Explore Databricks experiments and tweak UI tracking queries.
 

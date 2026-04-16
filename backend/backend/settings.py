@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+import corsheaders.defaults
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,12 +27,13 @@ SECRET_KEY = "django-insecure-vwo-jg_&5@i$y=5@=fo(r2%l20%6t*gn3a_6h8w@!_4b+_vc2x
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",  # must be first so it handles ASGI
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -41,16 +43,20 @@ INSTALLED_APPS = [
     # custom apps
     "deep_agent",
     "plane_client",
+    "chatbot",
     # 3rd parties
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_celery_results",
+    "channels",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -174,3 +180,68 @@ CELERY_BEAT_SCHEDULE = {
 
 # Add this at the bottom of settings.py
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ========================
+# REST Framework & JWT
+# ========================
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+}
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": os.getenv("JWT_SIGNING_KEY", SECRET_KEY),
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
+
+# ========================
+# CORS Origins
+# ========================
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(
+    ","
+)
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    *corsheaders.defaults.default_headers,
+]
+
+# ========================
+# Django Channels (WebSocket)
+# ========================
+ASGI_APPLICATION = "backend.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(os.getenv("REDIS_HOST", "redis"), 6379)],
+        },
+    }
+}
+
+# ========================
+# Chatbot Configuration
+# ========================
+# Max messages a user can send per minute (rate limiting)
+CHATBOT_RATE_LIMIT = int(os.getenv("CHATBOT_RATE_LIMIT", "20"))
+# Max characters per user message
+CHATBOT_MAX_MESSAGE_LENGTH = int(os.getenv("CHATBOT_MAX_MESSAGE_LENGTH", "4096"))
+# Max seconds to wait for agent response before timeout
+CHATBOT_AGENT_TIMEOUT = int(os.getenv("CHATBOT_AGENT_TIMEOUT", "120"))
+# Max tool call iterations in a single agent turn
+CHATBOT_AGENT_MAX_ITERATIONS = int(os.getenv("CHATBOT_AGENT_MAX_ITERATIONS", "10"))

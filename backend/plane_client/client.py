@@ -77,6 +77,13 @@ class PlaneClient:
             f"/api/v1/workspaces/{self.workspace_slug}/projects/{project_id}/issues/",
         )
 
+    def get_issue(self, project_id: str, issue_id: str):
+        """Retrieve a single issue by its ID."""
+        return self._request(
+            "GET",
+            f"/api/v1/workspaces/{self.workspace_slug}/projects/{project_id}/issues/{issue_id}/",
+        )
+
     def create_issue(self, project_id: str, data: dict):
         return self._request(
             "POST",
@@ -84,9 +91,37 @@ class PlaneClient:
             data=data,
         )
 
+    def create_subtask(self, project_id: str, parent_issue_id: str, data: dict):
+        """
+        Create a sub-task (child issue) under an existing issue.
+        Plane models subtasks as regular issues with a 'parent' field.
+        """
+        data["parent"] = parent_issue_id
+        return self._request(
+            "POST",
+            f"/api/v1/workspaces/{self.workspace_slug}/projects/{project_id}/issues/",
+            data=data,
+        )
+
+    def list_subtasks(self, project_id: str, parent_issue_id: str):
+        """List all subtasks (children) of an issue."""
+        return self._request(
+            "GET",
+            f"/api/v1/workspaces/{self.workspace_slug}/projects/{project_id}/issues/"
+            f"?parent={parent_issue_id}",
+        )
+
     def update_issue(self, project_id: str, issue_id: str, data: dict):
         return self._request(
             "PUT",
+            f"/api/v1/workspaces/{self.workspace_slug}/projects/{project_id}/issues/{issue_id}/",
+            data=data,
+        )
+
+    def patch_issue(self, project_id: str, issue_id: str, data: dict):
+        """Partially update an issue (PATCH — only send changed fields)."""
+        return self._request(
+            "PATCH",
             f"/api/v1/workspaces/{self.workspace_slug}/projects/{project_id}/issues/{issue_id}/",
             data=data,
         )
