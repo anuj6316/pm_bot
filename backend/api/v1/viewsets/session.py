@@ -28,3 +28,22 @@ class SessionViewSet(viewsets.ReadOnlyModelViewSet):
         session = self.get_object()
         trigger_manual_sync.delay(session.id)
         return Response({"status": "Sync triggered"}, status=status.HTTP_202_ACCEPTED)
+
+    @action(detail=True, methods=['get'])
+    def logs(self, request, pk=None):
+        """
+        Stream reasoning logs via SSE.
+        """
+        from django.http import StreamingHttpResponse
+        import time
+
+        def event_stream():
+            session = self.get_object()
+            # Placeholder for actual log streaming logic
+            yield f"data: Initializing logs for session {session.id}\n\n"
+            time.sleep(1)
+            yield f"data: Reasoning process started...\n\n"
+            time.sleep(1)
+            yield f"data: Status: {session.status}\n\n"
+
+        return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
