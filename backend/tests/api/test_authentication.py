@@ -1,6 +1,6 @@
 import pytest
 from rest_framework_simplejwt.tokens import RefreshToken
-from deep_agent.models import AgentIssueSession
+from agent.models import AgentIssueSession
 
 
 @pytest.mark.django_db

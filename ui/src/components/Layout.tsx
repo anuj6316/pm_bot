@@ -1,18 +1,18 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ListTodo, MessageSquare, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, ListTodo, MessageSquare, Settings, LogOut, User as UserIcon } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { auth, logout } from '@/src/lib/api';
+import { useAuth } from '@/src/contexts/AuthContext';
 
 export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
-  // Chat page manages its own full-bleed layout
+  const { user, logout, isLoading } = useAuth();
   const isChat = location.pathname === '/chat';
 
   React.useEffect(() => {
-    if (!auth.isAuthenticated()) navigate('/login', { replace: true });
-  }, [navigate]);
+    if (!isLoading && !user) navigate('/login', { replace: true });
+  }, [navigate, user, isLoading]);
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -24,6 +24,20 @@ export function Layout() {
   const handleLogout = async () => {
     await logout();
     navigate('/login', { replace: true });
+  };
+
+  const getUserInitials = () => {
+    if (!user) return '?';
+    const first = user.first_name?.charAt(0)?.toUpperCase() || '';
+    const last = user.last_name?.charAt(0)?.toUpperCase() || '';
+    return first + last || user.username?.charAt(0)?.toUpperCase() || '?';
+  };
+
+  const getUserDisplayName = () => {
+    if (!user) return 'User';
+    return user.first_name && user.last_name 
+      ? `${user.first_name} ${user.last_name}` 
+      : user.username || user.email;
   };
 
   return (
@@ -62,13 +76,26 @@ export function Layout() {
         <div className="p-4 border-t border-apple-border/50">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-apple-blue/10 border border-apple-blue/20 flex items-center justify-center flex-shrink-0">
-                <span className="text-[11px] font-semibold text-apple-blue">WS</span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-apple-text truncate">Workspace</p>
-                <p className="text-xs text-apple-text-muted truncate">PM Bot</p>
-              </div>
+              {user ? (
+                <>
+                  <div className="w-8 h-8 rounded-full bg-apple-blue/10 border border-apple-blue/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[11px] font-semibold text-apple-blue">{getUserInitials()}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-apple-text truncate">{getUserDisplayName()}</p>
+                    <p className="text-xs text-apple-text-muted truncate">{user.email}</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    <UserIcon className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-apple-text truncate">Loading...</p>
+                  </div>
+                </>
+              )}
             </div>
             <button
               onClick={handleLogout}
@@ -84,9 +111,7 @@ export function Layout() {
       {/* Main content */}
       <main className="flex-1 min-w-0 overflow-hidden flex flex-col">
         {isChat
-          /* Chat page: no padding, no max-width — Chat.tsx owns its full height layout */
           ? <div className="flex-1 flex min-h-0"><Outlet /></div>
-          /* All other pages: standard scrollable padded container */
           : (
             <div className="flex-1 overflow-y-auto p-8">
               <div className="max-w-5xl mx-auto">

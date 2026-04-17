@@ -20,6 +20,7 @@ def _build_ws_url(path: str, token: str) -> str:
     return f"{path}?token={token}"
 
 
+@database_sync_to_async
 def _get_token_for(user) -> str:
     refresh = RefreshToken.for_user(user)
     return str(refresh.access_token)
@@ -55,7 +56,7 @@ class ChatConsumerAuthTest(TransactionTestCase):
         user = await database_sync_to_async(User.objects.create_user)(
             username="wsuser", password="pass123"
         )
-        token = _get_token_for(user)
+        token = await _get_token_for(user)
 
         communicator = WebsocketCommunicator(
             self.application, f"/ws/chat/new/?token={token}"
@@ -78,7 +79,7 @@ class ChatConsumerMessageTest(TransactionTestCase):
         from backend.asgi import application
         self.application = application
 
-    @patch("chatbot.consumers.create_chat_agent")
+    @patch("chat.consumers.create_chat_agent")
     async def test_message_triggers_streaming_response(self, mock_create_agent):
         """Sending a message should produce token events followed by 'done'."""
         # Set up mock agent that yields a single AIMessageChunk
@@ -97,7 +98,7 @@ class ChatConsumerMessageTest(TransactionTestCase):
         user = await database_sync_to_async(User.objects.create_user)(
             username="streamuser", password="pass123"
         )
-        token = _get_token_for(user)
+        token = await _get_token_for(user)
 
         communicator = WebsocketCommunicator(
             self.application, f"/ws/chat/new/?token={token}"
@@ -131,7 +132,7 @@ class ChatConsumerMessageTest(TransactionTestCase):
         user = await database_sync_to_async(User.objects.create_user)(
             username="bigmsguser", password="pass123"
         )
-        token = _get_token_for(user)
+        token = await _get_token_for(user)
 
         communicator = WebsocketCommunicator(
             self.application, f"/ws/chat/new/?token={token}"
@@ -174,14 +175,14 @@ class ChatbotRESTAPITest(TestCase):
         self.assertEqual(response.data["title"], "New Conversation")
 
     def test_retrieve_conversation(self):
-        from chatbot.models import Conversation
+        from chat.models import Conversation
         conv = Conversation.objects.create(user=self.user, title="My Chat")
         response = self.client.get(f"/api/v1/chat/conversations/{conv.id}/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["title"], "My Chat")
 
     def test_delete_conversation(self):
-        from chatbot.models import Conversation
+        from chat.models import Conversation
         conv = Conversation.objects.create(user=self.user)
         response = self.client.delete(f"/api/v1/chat/conversations/{conv.id}/")
         self.assertEqual(response.status_code, 204)
@@ -194,7 +195,7 @@ class ChatbotRESTAPITest(TestCase):
 
     def test_cannot_access_other_users_conversation(self):
         other_user = User.objects.create_user(username="other", password="pass")
-        from chatbot.models import Conversation
+        from chat.models import Conversation
         conv = Conversation.objects.create(user=other_user, title="Private")
         response = self.client.get(f"/api/v1/chat/conversations/{conv.id}/")
         self.assertEqual(response.status_code, 404)

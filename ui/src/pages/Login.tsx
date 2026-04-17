@@ -1,30 +1,25 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { Button } from '@/src/components/ui/Button';
 import { Input } from '@/src/components/ui/Input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/Card';
-import { login, auth } from '@/src/lib/api';
 import { Loader2 } from 'lucide-react';
 
 export function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // If already authenticated, skip login
-  React.useEffect(() => {
-    if (auth.isAuthenticated()) navigate('/dashboard', { replace: true });
-  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const tokens = await login(username, password);
-      auth.setTokens(tokens.access, tokens.refresh);
+      await login(username, password);
       navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -47,7 +42,7 @@ export function Login() {
         <Card className="border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white/70 backdrop-blur-xl">
           <CardHeader>
             <CardTitle>Sign In</CardTitle>
-            <CardDescription>Enter your Django admin credentials</CardDescription>
+            <CardDescription>Enter your credentials</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">

@@ -1,5 +1,5 @@
 import pytest
-from deep_agent.models import AgentIssueSession
+from agent.models import AgentIssueSession
 
 
 @pytest.mark.django_db
@@ -10,7 +10,7 @@ def test_list_sessions(authenticated_client, test_user):
         status="PENDING",
         created_by=test_user,
     )
-    response = authenticated_client.get("/api/v1/issues/")
+    response = authenticated_client.get("/api/v1/sessions/")
     assert response.status_code == 200
     assert "results" in response.data
     assert response.data["count"] == 1
@@ -24,7 +24,7 @@ def test_retrieve_session(authenticated_client, test_user):
         status="PENDING",
         created_by=test_user,
     )
-    response = authenticated_client.get(f"/api/v1/issues/{session.id}/")
+    response = authenticated_client.get(f"/api/v1/sessions/{session.id}/")
     assert response.status_code == 200
     assert response.data["id"] == session.id
     assert response.data["plane_issue_id"] == "2"
@@ -33,7 +33,7 @@ def test_retrieve_session(authenticated_client, test_user):
 @pytest.mark.django_db
 def test_list_sessions_empty(authenticated_client):
     """GET /api/v1/issues/ with no data returns empty list."""
-    response = authenticated_client.get("/api/v1/issues/")
+    response = authenticated_client.get("/api/v1/sessions/")
     assert response.status_code == 200
     assert response.data["results"] == []
     assert response.data["count"] == 0
@@ -48,7 +48,7 @@ def test_list_sessions_pagination(authenticated_client, test_user):
             status="PENDING",
             created_by=test_user,
         )
-    response = authenticated_client.get("/api/v1/issues/")
+    response = authenticated_client.get("/api/v1/sessions/")
     assert response.status_code == 200
     assert "count" in response.data
     assert "results" in response.data

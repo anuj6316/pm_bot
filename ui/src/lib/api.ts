@@ -76,10 +76,76 @@ async function refreshTokens(): Promise<boolean> {
 
 // ─── Auth endpoints ───────────────────────────────────────────────────────────
 
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  date_joined: string;
+}
+
 export interface LoginResponse {
   access: string;
   refresh: string;
 }
+
+export interface UserResponse {
+  msg: string;
+  data: User;
+}
+
+// ─── API wrapper with typed responses ───────────────────────────────────────
+
+export const api = {
+  get: async <T>(path: string): Promise<T> => {
+    const res = await apiFetch(path);
+    if (!res.ok) throw new Error(`GET ${path} failed`);
+    const data = await res.json();
+    return data.data ?? data;
+  },
+
+  post: async <T>(path: string, data: unknown): Promise<T> => {
+    const res = await apiFetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { msg?: string }).msg || `POST ${path} failed`);
+    }
+    const result = await res.json();
+    return result.data ?? result;
+  },
+
+  patch: async <T>(path: string, data: unknown): Promise<T> => {
+    const res = await apiFetch(path, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { msg?: string }).msg || `PATCH ${path} failed`);
+    }
+    const result = await res.json();
+    return result.data ?? result;
+  },
+
+  login: async (username: string, password: string): Promise<LoginResponse> => {
+    const res = await fetch(`${API_BASE}/auth/token/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Invalid credentials');
+    }
+    return res.json();
+  },
+};
 
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const res = await fetch(`${API_BASE}/auth/token/`, {
@@ -104,6 +170,49 @@ export async function logout(): Promise<void> {
     }).catch(() => {});
   }
   auth.clear();
+}
+
+// ─── User Profile ───────────────────────────────────────────────────────────
+
+export async function fetchUserProfile(): Promise<User> {
+  const res = await apiFetch('/user/');
+  if (!res.ok) throw new Error('Failed to fetch user profile');
+  const data = await res.json();
+  return data.data;
+}
+
+export async function updateUserProfile(updates: Partial<User>): Promise<User> {
+  const res = await apiFetch('/user/', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { msg?: string }).msg || 'Failed to update profile');
+  }
+  const data = await res.json();
+  return data.data;
+}
+
+export async function changeUserPassword(
+  oldPassword: string,
+  newPassword: string,
+  confirmPassword: string
+): Promise<void> {
+  const res = await apiFetch('/user/change-password/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      old_password: oldPassword,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { msg?: string }).msg || 'Failed to change password');
+  }
 }
 
 // ─── Sessions (Dashboard) ─────────────────────────────────────────────────────

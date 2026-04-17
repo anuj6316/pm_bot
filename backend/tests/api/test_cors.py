@@ -1,5 +1,5 @@
 import pytest
-from deep_agent.models import AgentIssueSession
+from agent.models import AgentIssueSession
 
 
 @pytest.mark.django_db

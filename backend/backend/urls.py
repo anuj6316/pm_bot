@@ -9,6 +9,9 @@ HTTP Routes:
     /api/v1/sessions/                      → Agent issue sessions (read-only)
     /api/v1/issues/                        → Plane issues proxy (read-only)
     /api/v1/chat/conversations/            → Chatbot conversation management
+    /api/v1/schema/                        → OpenAPI schema (JSON)
+    /api/v1/docs/                          → Swagger UI
+    /api/v1/redoc/                         → ReDoc
 
 WebSocket Routes (handled by ASGI/Channels):
     ws://.../ws/chat/new/                  → Start a new conversation
@@ -22,18 +25,38 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenBlacklistView,
 )
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-
     # ── JWT Authentication ──────────────────────────────────────────
     path("api/v1/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/v1/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    path("api/v1/auth/token/blacklist/", TokenBlacklistView.as_view(), name="token_blacklist"),
-
-    # ── Agent Sessions + Issues (existing) ─────────────────────────
-    path("api/v1/", include("api.v1.urls")),
-
-    # ── Chatbot REST API ────────────────────────────────────────────
-    path("api/v1/chat/", include("chatbot.urls")),
+    path(
+        "api/v1/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"
+    ),
+    path(
+        "api/v1/auth/token/blacklist/",
+        TokenBlacklistView.as_view(),
+        name="token_blacklist",
+    ),
+    # ── Modular Apps ────────────────────────────────────────────────
+    path("api/v1/user/", include("authentication.urls")),
+    path("api/v1/", include("agent.urls")),
+    path("api/v1/", include("integrations.urls")),
+    path("api/v1/chat/", include("chat.urls")),
+    # ── OpenAPI/Swagger Documentation ───────────────────────────────
+    path("api/v1/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/v1/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+    path(
+        "api/v1/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"
+    ),
 ]
+

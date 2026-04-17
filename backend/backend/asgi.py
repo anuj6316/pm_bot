@@ -30,8 +30,8 @@ except Exception:
 
 from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
 from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
-from chatbot.middleware import JwtAuthMiddlewareStack  # noqa: E402
-from chatbot.routing import websocket_urlpatterns  # noqa: E402
+from chat.middleware import JwtAuthMiddlewareStack  # noqa: E402
+from chat.routing import websocket_urlpatterns  # noqa: E402
 
 application = ProtocolTypeRouter(
     {

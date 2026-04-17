@@ -41,9 +41,10 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # custom apps
-    "deep_agent",
-    "plane_client",
-    "chatbot",
+    "authentication",
+    "agent",
+    "chat",
+    "integrations",
     # 3rd parties
     "rest_framework",
     "rest_framework_simplejwt",
@@ -51,10 +52,12 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_celery_results",
     "channels",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -146,7 +149,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
-
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 ## Celery
 # The broker is Redis — where Django pushes tasks and Celery pulls from
@@ -173,7 +177,7 @@ CELERY_AUTODISCOVER_TASKS = True
 # Beat Schedule
 CELERY_BEAT_SCHEDULE = {
     "poll-plane-every-5-minutes": {
-        "task": "deep_agent.tasks.poll_plane_issues",
+        "task": "agent.tasks.poll_plane_issues",
         "schedule": 300.0,  # 5 minutes
     },
 }
@@ -193,6 +197,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 from datetime import timedelta
@@ -245,3 +250,29 @@ CHATBOT_MAX_MESSAGE_LENGTH = int(os.getenv("CHATBOT_MAX_MESSAGE_LENGTH", "4096")
 CHATBOT_AGENT_TIMEOUT = int(os.getenv("CHATBOT_AGENT_TIMEOUT", "120"))
 # Max tool call iterations in a single agent turn
 CHATBOT_AGENT_MAX_ITERATIONS = int(os.getenv("CHATBOT_AGENT_MAX_ITERATIONS", "10"))
+
+# ========================
+# DRF Spectacular (Swagger/OpenAPI)
+# ========================
+SPECTACULAR_SETTINGS = {
+    "TITLE": "PM Bot API",
+    "DESCRIPTION": "Project Management Bot API with Plane integration and AI chatbot",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": "/api/v1/",
+    "SECURITY": [
+        {
+            "bearerAuth": [],
+        },
+    ],
+    "COMPONENTS": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+            }
+        }
+    },
+}
