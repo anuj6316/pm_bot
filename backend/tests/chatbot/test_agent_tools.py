@@ -4,7 +4,7 @@ Unit tests for the Plane tool functions in chat.agent.tools.
 All tests mock PlaneClient so no real Plane API calls are made.
 """
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from django.test import TestCase
 from integrations.plane.exceptions import PlaneAPIError, PlaneAuthError
 

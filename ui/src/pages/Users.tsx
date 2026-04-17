@@ -13,9 +13,16 @@ interface UserData {
   projects: string[];
 }
 
+interface Project {
+  id: string;
+  name: string;
+  identifier: string;
+}
+
 export function Users() {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,31 +33,39 @@ export function Users() {
     username: '',
     password: '',
     role: 'developer',
-    projects_input: '',
+    selected_projects: [] as string[],
   });
 
-  const fetchUsers = async () => {
+  const fetchInitialData = async () => {
     try {
       setIsLoading(true);
-      const data = await api.get('/user/list_users/');
-      setUsers(data);
+      const [usersData, projectsData] = await Promise.all([
+        api.get<UserData[]>('/user/list_users/'),
+        api.get<Project[]>('/user/projects/')
+      ]);
+      setUsers(usersData);
+      setProjects(Array.isArray(projectsData) ? projectsData : []);
     } catch (err: any) {
-      toast.error('Failed to fetch users');
+      toast.error('Failed to fetch data');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchInitialData();
   }, []);
+
+  const projectMap = (Array.isArray(projects) ? projects : []).reduce((acc, p) => ({ ...acc, [p.id.toLowerCase()]: p.name }), {} as Record<string, string>);
+
+  const canManage = currentUser?.role === 'admin' || currentUser?.role === 'consultant' || currentUser?.is_superuser;
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const payload = {
         ...formData,
-        projects: formData.projects_input.split(',').map(s => s.trim()).filter(Boolean),
+        projects: formData.selected_projects,
       };
 
       await api.post('/user/create-user/', payload);
@@ -61,9 +76,9 @@ export function Users() {
         username: '',
         password: '',
         role: 'developer',
-        projects_input: '',
+        selected_projects: [],
       });
-      fetchUsers();
+      fetchInitialData();
     } catch (err: any) {
       const errorMsg = err.response?.data?.msg || 'Failed to create user';
       toast.error(errorMsg);
@@ -86,16 +101,20 @@ export function Users() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-apple-text">User Management</h1>
-          <p className="text-apple-text-muted mt-1">Manage team roles and project access.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-apple-text">Team</h1>
+          <p className="text-apple-text-muted mt-1">
+            {canManage ? 'Manage team roles and project access.' : 'View your project colleagues and team members.'}
+          </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 bg-apple-blue hover:bg-apple-blue-hover text-white px-5 py-2.5 rounded-full font-medium transition-all shadow-sm active:scale-95"
-        >
-          <UserPlus className="w-4 h-4" />
-          Add New User
-        </button>
+        {canManage && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center justify-center gap-2 bg-apple-blue hover:bg-apple-blue-hover text-white px-5 py-2.5 rounded-full font-medium transition-all shadow-sm active:scale-95"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add New User
+          </button>
+        )}
       </div>
 
       {/* Stats/Summary Row */}
@@ -138,8 +157,8 @@ export function Users() {
               <tr className="bg-black/5">
                 <th className="px-6 py-4 text-xs font-semibold text-apple-text-muted uppercase tracking-wider">User</th>
                 <th className="px-6 py-4 text-xs font-semibold text-apple-text-muted uppercase tracking-wider">Role</th>
-                <th className="px-6 py-4 text-xs font-semibold text-apple-text-muted uppercase tracking-wider">Projects</th>
-                <th className="px-6 py-4 text-xs font-semibold text-apple-text-muted uppercase tracking-wider text-right">Actions</th>
+                <th className="px-6 py-4 text-xs font-semibold text-apple-text-muted uppercase tracking-wider">Project Access</th>
+                {canManage && <th className="px-6 py-4 text-xs font-semibold text-apple-text-muted uppercase tracking-wider text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-apple-border/30">
@@ -184,28 +203,30 @@ export function Users() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1 max-w-[300px]">
+                      <div className="flex flex-wrap gap-1.5 max-w-[350px]">
                         {u.projects.length > 0 ? (
-                          u.projects.map(p => (
-                            <span key={p} className="px-2 py-0.5 rounded-md bg-black/5 text-[10px] font-medium text-apple-text-muted">
-                              {p.slice(0, 8)}...
+                          u.projects.map(pid => (
+                            <span key={pid} className="px-2.5 py-1 rounded-lg bg-apple-blue/5 text-[10px] font-medium text-apple-blue border border-apple-blue/10">
+                              {projectMap[pid.toLowerCase()] || pid.slice(0, 8)}
                             </span>
                           ))
                         ) : (
-                          <span className="text-xs text-apple-text-muted italic">All Access</span>
+                          <span className="text-xs text-apple-text-muted italic">Global Access</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 text-apple-text-muted hover:text-apple-blue rounded-lg hover:bg-black/5">
-                          <Key className="w-4 h-4" />
-                        </button>
-                        <button className="p-2 text-apple-text-muted hover:text-red-500 rounded-lg hover:bg-black/5">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {canManage && (
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button className="p-2 text-apple-text-muted hover:text-apple-blue rounded-lg hover:bg-black/5">
+                            <Key className="w-4 h-4" />
+                          </button>
+                          <button className="p-2 text-apple-text-muted hover:text-red-500 rounded-lg hover:bg-black/5">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -289,16 +310,42 @@ export function Users() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-apple-text ml-1">Project Access (UUIDs)</label>
-                <textarea
-                  value={formData.projects_input}
-                  onChange={e => setFormData({ ...formData, projects_input: e.target.value })}
-                  className="w-full bg-black/5 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-apple-blue transition-all min-h-[80px]"
-                  placeholder="Comma separated Plane UUIDs. Leave empty for Global access."
-                />
+              <div className="space-y-3">
+                <label className="text-sm font-semibold text-apple-text ml-1">Project Assignment</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[200px] overflow-y-auto p-4 bg-black/5 rounded-2xl border border-apple-border/50">
+                  {projects.map((proj) => (
+                    <label 
+                      key={proj.id} 
+                      className={cn(
+                        "flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer",
+                        formData.selected_projects.includes(proj.id) 
+                          ? "bg-apple-blue/10 border-apple-blue/30 text-apple-blue" 
+                          : "bg-white border-transparent hover:border-apple-border"
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={formData.selected_projects.includes(proj.id)}
+                        onChange={(e) => {
+                          const next = e.target.checked 
+                            ? [...formData.selected_projects, proj.id]
+                            : formData.selected_projects.filter(id => id !== proj.id);
+                          setFormData({ ...formData, selected_projects: next });
+                        }}
+                      />
+                      <div className={cn(
+                        "w-4 h-4 rounded-md border flex items-center justify-center transition-colors",
+                        formData.selected_projects.includes(proj.id) ? "bg-apple-blue border-apple-blue" : "border-gray-300 bg-white"
+                      )}>
+                        {formData.selected_projects.includes(proj.id) && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="text-xs font-medium truncate">{proj.name}</span>
+                    </label>
+                  ))}
+                </div>
                 <p className="text-[10px] text-apple-text-muted px-1 italic">
-                  Note: Consultant and Admin automatically have Global access.
+                  Note: Consultants and Admins automatically have Global access to all projects.
                 </p>
               </div>
 

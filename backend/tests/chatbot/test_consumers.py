@@ -5,8 +5,7 @@ Uses channels.testing.WebsocketCommunicator for in-process WS testing —
 no live server required. The agent itself is mocked so LLM calls are skipped.
 """
 
-import json
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 from django.test import TestCase, TransactionTestCase
 from django.contrib.auth import get_user_model
 from channels.testing import WebsocketCommunicator

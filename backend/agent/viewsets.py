@@ -101,7 +101,7 @@ class SessionViewSet(viewsets.ReadOnlyModelViewSet):
             # Placeholder for actual log streaming logic
             yield f"data: Initializing logs for session {session.id}\n\n"
             time.sleep(1)
-            yield f"data: Reasoning process started...\n\n"
+            yield "data: Reasoning process started...\n\n"
             time.sleep(1)
             yield f"data: Status: {session.status}\n\n"
 

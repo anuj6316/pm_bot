@@ -44,11 +44,19 @@ class UserViewSet(viewsets.ViewSet):
 
         try:
             plane = PlaneClient()
-            all_projects = plane.list_projects() or []
+            plane_res = plane.list_projects() or []
+            
+            # Handle Plane pagination
+            if isinstance(plane_res, dict) and "results" in plane_res:
+                all_projects = plane_res["results"]
+            elif isinstance(plane_res, list):
+                all_projects = plane_res
+            else:
+                all_projects = []
 
             # For developers, filter by their assigned projects
             if (
-                request.user.role in ["developer", "developer"]
+                request.user.role in ["developer"]
                 and not request.user.is_superuser
             ):
                 allowed_ids = [str(pid).lower() for pid in request.user.projects]
@@ -186,11 +194,28 @@ class UserViewSet(viewsets.ViewSet):
         permission_classes=[IsAuthenticated, CanManageUsers],
     )
     def list_users(self, request):
-        """GET /api/v1/user/list_users/ - List all users in the system"""
+        """GET /api/v1/user/list_users/ - List users in the system (filtered by role)"""
         from django.contrib.auth import get_user_model
+        from django.db.models import Q
 
         User = get_user_model()
-        users = User.objects.all().order_by("-date_joined")
+        
+        # If Admin/Consultant/Superuser: see all
+        if request.user.role in ["admin", "consultant"] or request.user.is_superuser:
+            users = User.objects.all().order_by("-date_joined")
+        else:
+            # Developers only see users who share at least one project
+            user_projects = request.user.get_allowed_projects()
+            if not user_projects:
+                # If no projects assigned, they at least see themselves
+                users = User.objects.filter(pk=request.user.pk)
+            else:
+                # Matches any user where their projects list contains ANY item from the requester's list
+                query = Q(pk=request.user.pk) # Always see self
+                for p_id in user_projects:
+                    query |= Q(projects__contains=p_id)
+                users = User.objects.filter(query).distinct().order_by("-date_joined")
+
         serializer = UserProfileSerializer(users, many=True)
         return Response(serializer.data)
 

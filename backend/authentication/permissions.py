@@ -54,7 +54,15 @@ class CanManageUsers(permissions.BasePermission):
     """
     def has_permission(self, request, view):
         user = request.user
-        return user.is_authenticated and (user.is_superuser or user.role in ["admin", "consultant"])
+        if not user or not user.is_authenticated:
+            return False
+            
+        # All authenticated users can read (list/retrieve)
+        if request.method in ["GET", "HEAD", "OPTIONS"]:
+            return True
+            
+        # Write operations restricted to Admin/Consultant
+        return user.is_superuser or user.role in ["admin", "consultant"]
 
     def has_object_permission(self, request, view, obj):
         user = request.user

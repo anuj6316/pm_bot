@@ -377,7 +377,7 @@ export async function deleteConversation(id: string): Promise<void> {
 }
 
 export interface HistoryMessage {
-  id: string;
+  id: number;
   role: 'human' | 'assistant' | 'tool';
   content: string;
   tool_calls: unknown[] | null;

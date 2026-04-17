@@ -19,9 +19,7 @@ export function Layout() {
     { icon: ListTodo,        label: 'Issues',    path: '/issues' },
     { icon: MessageSquare,   label: 'Chat',      path: '/chat' },
     { icon: UserCircle,      label: 'Profile',   path: '/profile' },
-    ...(user?.role === 'admin' || user?.role === 'consultant' || user?.is_superuser
-      ? [{ icon: Users, label: 'Users', path: '/users' }] 
-      : []),
+    { icon: Users,           label: 'Users',     path: '/users' },
     { icon: Settings,        label: 'Settings',  path: '/settings' },
   ];
 
