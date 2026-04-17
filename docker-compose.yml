@@ -51,9 +51,6 @@ services:
       - pm_bot_network
     logging: *default-logging
 
-  # ========================
-  # Django Backend
-  # ========================
   django-web:
     build: ./backend
     restart: on-failure

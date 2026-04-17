@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   Loader2, RefreshCw, ChevronDown, ChevronRight,
   Folder, AlertCircle, ArrowUp, ArrowDown, Minus, Circle,
-  Plus, GitBranch, X, Check,
+  Plus, GitBranch, X, Check, FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import {
@@ -12,6 +12,7 @@ import {
   type ProjectGroup,
   type PlaneIssue,
 } from '@/src/lib/api';
+import { useProject } from '@/src/contexts/ProjectContext';
 
 // ─── Priority helpers ─────────────────────────────────────────────────────────
 
@@ -364,6 +365,7 @@ function ProjectSection({ group, onRefresh }: { group: EnrichedGroup; onRefresh:
 // ─── Main Issues page ─────────────────────────────────────────────────────────
 
 export function Issues() {
+  const { selectedProject, availableProjects } = useProject();
   const [groups, setGroups] = useState<EnrichedGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -384,29 +386,43 @@ export function Issues() {
 
   useEffect(() => { loadIssues(); }, [loadIssues]);
 
-  const filteredGroups = search.trim()
-    ? groups
-        .map((g) => ({
-          ...g,
-          issues: g.issues.filter(
-            (i) =>
-              i.name.toLowerCase().includes(search.toLowerCase()) ||
-              g.project.name.toLowerCase().includes(search.toLowerCase()),
-          ),
-        }))
-        .filter((g) => g.issues.length > 0)
-    : groups;
+  // Filter groups by selected project
+  const filteredGroups = React.useMemo(() => {
+    let result = search.trim()
+      ? groups
+          .map((g) => ({
+            ...g,
+            issues: g.issues.filter(
+              (i) =>
+                i.name.toLowerCase().includes(search.toLowerCase()) ||
+                g.project.name.toLowerCase().includes(search.toLowerCase()),
+            ),
+          }))
+          .filter((g) => g.issues.length > 0)
+      : groups;
 
-  const totalIssues = groups.reduce((sum, g) => sum + g.issues.length, 0);
+    // Filter by selected project
+    if (selectedProject) {
+      result = result.filter((g) => g.project.id === selectedProject.id);
+    }
+
+    return result;
+  }, [groups, search, selectedProject]);
+
+  const totalIssues = filteredGroups.reduce((sum, g) => sum + g.issues.length, 0);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Plane Issues</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Issues</h1>
           <p className="text-apple-text-muted mt-1">
-            {loading ? 'Loading…' : `${totalIssues} issues across ${groups.length} projects`}
+            {loading ? 'Loading…' : (
+              selectedProject
+                ? `${totalIssues} issue${totalIssues !== 1 ? 's' : ''} in ${selectedProject.name}`
+                : `${totalIssues} issues across ${filteredGroups.length} project${filteredGroups.length !== 1 ? 's' : ''}`
+            )}
           </p>
         </div>
         <button
@@ -422,7 +438,7 @@ export function Issues() {
       {/* Search */}
       <input
         type="text"
-        placeholder="Search issues or projects…"
+        placeholder={selectedProject ? `Search issues in ${selectedProject.name}…` : 'Search issues or projects…'}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="w-full px-4 py-2.5 text-sm border border-apple-border/60 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-apple-blue/30 focus:border-apple-blue transition"
@@ -437,8 +453,24 @@ export function Issues() {
           <Loader2 className="w-7 h-7 animate-spin text-apple-text-muted" />
         </div>
       ) : filteredGroups.length === 0 ? (
-        <div className="border border-apple-border/40 rounded-xl p-12 text-center text-apple-text-muted text-sm">
-          {search ? 'No issues match your search.' : 'No projects or issues found in your Plane workspace.'}
+        <div className="border border-apple-border/40 rounded-xl p-12 text-center">
+          {availableProjects.length === 0 ? (
+            <div className="space-y-2">
+              <FolderOpen className="w-10 h-10 mx-auto text-apple-text-muted" />
+              <p className="text-apple-text-muted text-sm">No projects available</p>
+              <p className="text-apple-text-muted/60 text-xs">Contact your administrator to get project access</p>
+            </div>
+          ) : search ? (
+            <p className="text-apple-text-muted text-sm">No issues match your search.</p>
+          ) : (
+            <div className="space-y-2">
+              <Folder className="w-10 h-10 mx-auto text-apple-text-muted" />
+              <p className="text-apple-text-muted text-sm">No issues found</p>
+              {selectedProject && (
+                <p className="text-apple-text-muted/60 text-xs">in {selectedProject.name}</p>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-4">

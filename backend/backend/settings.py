@@ -182,6 +182,8 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+AUTH_USER_MODEL = "authentication.User"
+
 # Add this at the bottom of settings.py
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

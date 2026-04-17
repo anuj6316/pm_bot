@@ -13,7 +13,6 @@ from urllib.parse import parse_qs
 
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import UntypedToken
@@ -21,12 +20,13 @@ from jwt import decode as jwt_decode
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
-User = get_user_model()
 
 
 @database_sync_to_async
 def _get_user_from_id(user_id: int):
     """Resolve user ID → User object. Returns AnonymousUser on miss."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
     try:
         return User.objects.get(id=user_id)
     except User.DoesNotExist:

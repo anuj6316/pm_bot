@@ -5,7 +5,15 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.types import OpenApiTypes
 
-from .serializers import UserProfileSerializer, ChangePasswordSerializer
+from .serializers import (
+    UserProfileSerializer,
+    ChangePasswordSerializer,
+    SetRoleSerializer,
+    UserCreateSerializer,
+    ProjectSerializer,
+    SelectedProjectSerializer,
+)
+from .permissions import CanManageUsers
 
 
 class UserViewSet(viewsets.ViewSet):
@@ -18,16 +26,86 @@ class UserViewSet(viewsets.ViewSet):
     def get_serializer_class(self):
         if self.action == "change_password":
             return ChangePasswordSerializer
+        if self.action == "set_role":
+            return SetRoleSerializer
+        if self.action == "create_user":
+            return UserCreateSerializer
         return UserProfileSerializer
 
-    def profile(self, request):
+    @extend_schema(
+        summary="List user projects",
+        description="Returns projects from Plane that the user has access to. Admins/Consultants see all projects.",
+        responses={200: ProjectSerializer(many=True)},
+    )
+    @action(detail=False, methods=["get"], url_path="projects")
+    def projects(self, request):
+        """GET /api/v1/user/projects/ - List projects user has access to"""
+        from integrations.plane.client import PlaneClient
+
+        try:
+            plane = PlaneClient()
+            all_projects = plane.list_projects() or []
+
+            # For developers, filter by their assigned projects
+            if (
+                request.user.role in ["developer", "developer"]
+                and not request.user.is_superuser
+            ):
+                allowed_ids = [str(pid).lower() for pid in request.user.projects]
+                filtered_projects = [
+                    p
+                    for p in all_projects
+                    if str(p.get("id", "")).lower() in allowed_ids
+                ]
+                return Response(
+                    {"msg": "Projects fetched successfully", "data": filtered_projects}
+                )
+
+            # Admins and Consultants see all projects
+            return Response(
+                {"msg": "Projects fetched successfully", "data": all_projects}
+            )
+
+        except Exception as e:
+            return Response(
+                {"msg": "Failed to fetch projects", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @extend_schema(
+        summary="Set selected project",
+        description="Store the user's currently selected project in their profile.",
+        request=SelectedProjectSerializer,
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["post"], url_path="set-selected-project")
+    def set_selected_project(self, request):
+        """POST /api/v1/user/set-selected-project/ - Set user's selected project"""
+        serializer = SelectedProjectSerializer(data=request.data)
+        if serializer.is_valid():
+            project_id = serializer.validated_data.get("project_id")
+
+            # Verify user has access to this project
+            if not request.user.has_project_access(project_id):
+                return Response(
+                    {"msg": "You don't have access to this project"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            request.user.selected_project = project_id
+            request.user.save(update_fields=["selected_project"])
+            return Response({"msg": "Selected project updated successfully"})
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def list(self, request):
         """GET /api/v1/user/ - Get current user profile"""
         serializer = UserProfileSerializer(request.user)
         return Response(
             {"msg": "User profile fetched successfully", "data": serializer.data}
         )
 
-    def update_profile(self, request):
+    def update(self, request):
         """PUT /api/v1/user/ - Update current user profile"""
         serializer = UserProfileSerializer(
             request.user, data=request.data, partial=False
@@ -42,7 +120,7 @@ class UserViewSet(viewsets.ViewSet):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    def partial_update_profile(self, request):
+    def partial_update(self, request):
         """PATCH /api/v1/user/ - Partial update current user profile"""
         serializer = UserProfileSerializer(
             request.user, data=request.data, partial=True
@@ -57,11 +135,7 @@ class UserViewSet(viewsets.ViewSet):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    @extend_schema(
-        summary="Change password",
-        request=ChangePasswordSerializer,
-        responses={200: OpenApiTypes.OBJECT},
-    )
+    @action(detail=False, methods=["post"], url_path="change-password")
     def change_password(self, request):
         """POST /api/v1/user/change-password/ - Change user password"""
         serializer = ChangePasswordSerializer(data=request.data)
@@ -83,11 +157,7 @@ class UserViewSet(viewsets.ViewSet):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    @extend_schema(
-        summary="Logout",
-        description="Blacklist the refresh token to logout.",
-        responses={200: OpenApiTypes.OBJECT},
-    )
+    @action(detail=False, methods=["post"])
     def logout(self, request):
         """POST /api/v1/user/logout/ - Logout user and blacklist tokens"""
         try:
@@ -101,3 +171,103 @@ class UserViewSet(viewsets.ViewSet):
             return Response({"msg": "Logged out successfully"})
         except Exception:
             return Response({"msg": "Logged out"}, status=status.HTTP_200_OK)
+
+    # ------------------------------------------------------------------
+    # User Management (Admin/Consultant only)
+    # ------------------------------------------------------------------
+
+    @extend_schema(
+        summary="List all users",
+        responses={200: UserProfileSerializer(many=True)},
+    )
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAuthenticated, CanManageUsers],
+    )
+    def list_users(self, request):
+        """GET /api/v1/user/list_users/ - List all users in the system"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        users = User.objects.all().order_by("-date_joined")
+        serializer = UserProfileSerializer(users, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        summary="Set user role",
+        request=SetRoleSerializer,
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="set-role",
+        permission_classes=[IsAuthenticated, CanManageUsers],
+    )
+    def set_role(self, request, pk=None):
+        """POST /api/v1/user/{id}/set-role/ - Set role for a specific user"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+
+        try:
+            target_user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"msg": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # DRF check_object_permissions manually since this is a ViewSet action on detail
+        self.check_object_permissions(request, target_user)
+
+        serializer = SetRoleSerializer(data=request.data)
+        if serializer.is_valid():
+            new_role = serializer.validated_data["role"]
+
+            # Additional Security Check: Consultant cannot promote to Admin
+            if request.user.role == "consultant" and new_role == "admin":
+                return Response(
+                    {"msg": "Consultants cannot promote users to Admin role."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            target_user.role = new_role
+            target_user.save()
+            return Response(
+                {"msg": f"Role updated to {new_role} for {target_user.email}"}
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        summary="Create new user",
+        request=UserCreateSerializer,
+        responses={201: UserProfileSerializer},
+    )
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="create-user",
+        permission_classes=[permissions.IsAuthenticated, CanManageUsers],
+    )
+    def create_user(self, request):
+        """POST /api/v1/user/create-user/ - Create a new account manually"""
+        serializer = UserCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            new_role = serializer.validated_data.get("role", "developer")
+
+            # Security: Consultant cannot create an Admin
+            if request.user.role == "consultant" and new_role == "admin":
+                return Response(
+                    {"msg": "Consultants are not authorized to create Admin accounts."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            user = serializer.save()
+            return Response(
+                {
+                    "msg": "Account created successfully",
+                    "data": UserProfileSerializer(user).data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

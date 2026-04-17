@@ -6,13 +6,15 @@ import { fetchConversations, fetchChatModels, deleteConversation, type Conversat
 import { useChatWebSocket } from '@/src/hooks/useChatWebSocket';
 import { ModelSelector, ModelInfoTooltip } from '@/src/components/chat/ModelSelector';
 import { MessageBubble } from '@/src/components/chat/MessageBubble';
+import { useProject } from '@/src/contexts/ProjectContext';
 
 export function Chat() {
+  const { selectedProject } = useProject();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [convLoading, setConvLoading] = useState(true);
   const [models, setModels] = useState<ChatModel[]>([]);
   const [selectedModel, setSelectedModel] = useState<ChatModel | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -36,7 +38,7 @@ export function Chat() {
     activeConvId,
     wsError,
     isSending
-  } = useChatWebSocket(loadConversations, selectedModel?.id);
+  } = useChatWebSocket(loadConversations, selectedModel?.id, selectedProject?.id);
 
   useEffect(() => {
     loadConversations();
@@ -85,20 +87,20 @@ export function Chat() {
             animate={{ width: 256, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-            className="flex flex-col flex-shrink-0 border-r border-gray-200/60 bg-gray-50/50 overflow-hidden"
+            className="flex flex-col flex-shrink-0 border-r border-apple-border/50 bg-apple-card/50 backdrop-blur-xl overflow-hidden"
           >
             {/* Sidebar header (Glass) */}
-            <div className="flex-shrink-0 flex items-center justify-between px-4 h-[57px] bg-white/50 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
-              <span className="text-sm font-semibold text-gray-700">Conversations</span>
+            <div className="flex-shrink-0 flex items-center justify-between px-4 h-[57px] bg-apple-card/50 backdrop-blur-xl border-b border-apple-border/50 sticky top-0 z-10">
+              <span className="text-sm font-semibold text-apple-text">Conversations</span>
             </div>
 
             {/* New chat button */}
-            <div className="flex-shrink-0 p-3 border-b border-gray-200/60">
+            <div className="flex-shrink-0 p-3 border-b border-apple-border/50">
               <button
                 onClick={() => connectToConversation('new')}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-200/80 active:bg-gray-300/80 transition-colors group"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-apple-text hover:bg-black/5 active:bg-black/10 transition-colors group"
               >
-                <span className="w-7 h-7 rounded-lg bg-gray-900 flex items-center justify-center flex-shrink-0 group-hover:bg-gray-700 transition-colors">
+                <span className="w-7 h-7 rounded-lg bg-apple-blue flex items-center justify-center flex-shrink-0 group-hover:bg-apple-blue-hover transition-colors">
                   <MessageSquarePlus className="w-3.5 h-3.5 text-white" />
                 </span>
                 New chat
@@ -108,14 +110,14 @@ export function Chat() {
             {/* Conversation list */}
             <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
               {convLoading ? (
-                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
+                <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-apple-border" /></div>
               ) : conversations.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-10 text-center px-3">
-                  <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shadow-inner">
-                    <MessageSquarePlus className="w-4 h-4 text-gray-400" />
+                  <div className="w-10 h-10 rounded-xl bg-apple-card flex items-center justify-center shadow-inner">
+                    <MessageSquarePlus className="w-4 h-4 text-apple-text-muted" />
                   </div>
-                  <p className="text-xs text-gray-400 leading-relaxed mt-2">
-                    No chats yet.<br />Click <strong className="text-gray-600">New chat</strong> to start.
+                  <p className="text-xs text-apple-text-muted leading-relaxed mt-2">
+                    No chats yet.<br />Click <strong className="text-apple-text">New chat</strong> to start.
                   </p>
                 </div>
               ) : (
@@ -126,14 +128,14 @@ export function Chat() {
                     className={cn(
                       'group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all text-sm mb-0.5',
                       activeConvId === conv.id
-                        ? 'bg-white shadow-[0_2px_8px_rgb(0,0,0,0.04)] text-gray-900 font-medium'
-                        : 'hover:bg-gray-200/60 text-gray-600',
+                        ? 'bg-apple-card shadow-[0_2px_8px_rgb(0,0,0,0.04)] text-apple-text font-medium'
+                        : 'hover:bg-black/5 text-apple-text-muted',
                     )}
                   >
                     <p className="truncate flex-1 mr-2">{conv.title}</p>
                     <button
                       onClick={(e) => handleDeleteConversation(e, conv.id)}
-                      className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                      className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1 rounded-lg text-apple-text-muted hover:text-red-500 hover:bg-red-50 transition-all"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -146,14 +148,14 @@ export function Chat() {
       </AnimatePresence>
 
       {/* ════ RIGHT: Main chat area ══════════════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-white/60 relative">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-apple-bg relative">
 
         {/* ── Top header bar (True Glassmorphism) ───────── */}
-        <div className="flex-shrink-0 flex items-center justify-between px-4 h-[57px] bg-white/70 backdrop-blur-2xl border-b border-gray-200/60 sticky top-0 z-20">
+        <div className="flex-shrink-0 flex items-center justify-between px-4 h-[57px] bg-apple-card/70 backdrop-blur-2xl border-b border-apple-border/50 sticky top-0 z-20">
           <div className="flex items-center gap-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-black/5 transition-colors mr-0.5 focus:outline-none focus:ring-2 focus:ring-gray-200 cursor-pointer"
+              className="p-2 rounded-xl text-apple-text-muted hover:text-apple-text hover:bg-black/5 transition-colors mr-0.5 focus:outline-none focus:ring-2 focus:ring-apple-border cursor-pointer"
               title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
             >
               {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
@@ -165,7 +167,7 @@ export function Chat() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => connectToConversation('new')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-gray-900 text-white hover:bg-gray-800 active:bg-gray-700 transition-colors shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-apple-blue text-white hover:bg-apple-blue-hover active:bg-apple-blue-hover/90 transition-colors shadow-sm cursor-pointer"
             >
               <MessageSquarePlus className="w-3.5 h-3.5" />
               New chat
@@ -182,16 +184,16 @@ export function Chat() {
           {!activeConvId && messages.length === 0 ? (
             /* Empty state */
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center h-full gap-5 text-center px-6">
-              <div className="w-14 h-14 rounded-[20px] bg-gray-900 flex items-center justify-center shadow-lg">
+              <div className="w-14 h-14 rounded-[20px] bg-apple-blue flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-xl tracking-tight">PM</span>
               </div>
               <div>
-                <p className="text-2xl font-semibold text-gray-900">What can I help with?</p>
+                <p className="text-2xl font-semibold text-apple-text">What can I help with?</p>
                 {selectedModel && (
-                  <p className="text-sm text-gray-400 mt-1.5">
-                    Using <span className="font-medium text-gray-600">{selectedModel.label}</span>
-                    <span className="mx-1.5 text-gray-300">·</span>
-                    Click <strong className="text-gray-600">New chat</strong> to start
+                  <p className="text-sm text-apple-text-muted mt-1.5">
+                    Using <span className="font-medium text-apple-text">{selectedModel.label}</span>
+                    <span className="mx-1.5 text-apple-border">·</span>
+                    Click <strong className="text-apple-text">New chat</strong> to start
                   </p>
                 )}
               </div>
@@ -207,13 +209,13 @@ export function Chat() {
         </div>
 
         {/* ── Input bar ────────────────────────────────────────────────────────── */}
-        <div className="flex-shrink-0 px-6 pb-6 pt-2 bg-gradient-to-t from-white via-white/95 to-transparent">
+        <div className="flex-shrink-0 px-6 pb-6 pt-2 bg-gradient-to-t from-apple-bg via-apple-bg/95 to-transparent">
           <div className="max-w-3xl mx-auto">
             <div className={cn(
-              'flex items-end gap-2 bg-[#F4F4F4]/80 backdrop-blur-md rounded-[28px] p-2 ring-1 ring-gray-200/60 transition-shadow focus-within:ring-gray-300 hover:ring-gray-300/80 shadow-[0_2px_15px_rgb(0,0,0,0.03)]'
+              'flex items-end gap-2 bg-apple-card/80 backdrop-blur-md rounded-[28px] p-2 ring-1 ring-apple-border/60 transition-shadow focus-within:ring-apple-border hover:ring-apple-border/80 shadow-[0_2px_15px_rgb(0,0,0,0.03)]'
             )}>
               <button disabled={isSending}
-                className="flex-shrink-0 w-[40px] h-[40px] rounded-full bg-white border border-gray-200/80 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm ml-1 mb-0.5"
+                className="flex-shrink-0 w-[40px] h-[40px] rounded-full bg-apple-card border border-apple-border/60 flex items-center justify-center text-apple-text-muted hover:bg-black/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm ml-1 mb-0.5"
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -224,12 +226,12 @@ export function Chat() {
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 placeholder="Ask anything"
                 disabled={isSending}
-                className="flex-1 bg-transparent border-none outline-none resize-none text-[15px] text-gray-900 placeholder:text-gray-400 py-3 px-1 mb-0.5 disabled:cursor-not-allowed max-h-[200px] overflow-y-auto leading-relaxed"
+                className="flex-1 bg-transparent border-none outline-none resize-none text-[15px] text-apple-text placeholder:text-apple-text-muted py-3 px-1 mb-0.5 disabled:cursor-not-allowed max-h-[200px] overflow-y-auto leading-relaxed"
                 style={{ minHeight: '40px' }}
               />
 
               <button disabled={isSending}
-                className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-200/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
+                className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-apple-text-muted hover:text-apple-text hover:bg-black/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed mb-0.5"
               >
                 <Mic className="w-4 h-4" />
               </button>
@@ -240,13 +242,13 @@ export function Chat() {
                   'flex-shrink-0 w-[40px] h-[40px] rounded-full flex items-center justify-center transition-all duration-200 mb-0.5 mr-1',
                   inputValue.trim() && !isSending
                     ? 'bg-apple-blue text-white hover:bg-apple-blue-hover shadow-md active:scale-95 cursor-pointer'
-                    : 'bg-gray-300 text-white cursor-not-allowed',
+                    : 'bg-apple-border text-white cursor-not-allowed',
                 )}
               >
                 {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 translate-x-[1px]" />}
               </button>
             </div>
-            <p className="text-center text-[11px] text-gray-400/80 mt-3 font-medium tracking-wide">
+            <p className="text-center text-[11px] text-apple-text-muted/80 mt-3 font-medium tracking-wide">
               PM Bot can make mistakes. Verify important information.
             </p>
           </div>

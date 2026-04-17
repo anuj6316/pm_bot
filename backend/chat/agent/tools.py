@@ -27,36 +27,76 @@ def _client() -> PlaneClient:
 
 
 @tool
-def list_projects() -> str:
+def list_projects(config: dict = None) -> str:
     """
-    List all projects in the Plane workspace.
+    List authorized projects.
+    """
+    conf = (config or {}).get("configurable", {})
+    user_role = conf.get("role", "developer")
+    allowed_ids = conf.get("allowed_projects", [])
+    is_superuser = conf.get("is_superuser", False)
 
-    Returns a formatted list of projects with their IDs and names.
-    Use this when the user asks about available projects or wants to
-    browse the workspace.
-    """
     try:
         data = _client().list_projects()
-        projects = data.get("results", []) if isinstance(data, dict) else data
+        all_projects = data.get("results", []) if isinstance(data, dict) else data
+        
+        # Admin / Consultant / Superuser see everything
+        is_global = is_superuser or user_role in ["admin", "consultant"]
+        
+        projects = [
+            p for p in all_projects 
+            if is_global or p.get("id") in allowed_ids
+        ]
+
         if not projects:
-            return "No projects found in the workspace."
+            return "No projects found."
+            
         lines = [f"- **{p['name']}** (ID: `{p['id']}`)" for p in projects]
-        return f"Found {len(projects)} project(s):\n" + "\n".join(lines)
+        return f"Found {len(projects)} authorized project(s):\n" + "\n".join(lines)
     except PlaneAPIError as e:
         logger.error(f"list_projects tool error: {e}")
         return f"Error fetching projects: {e.message}"
 
 
+def validate_project_access(project_id: str, config: dict, write: bool = False) -> str | None:
+    """
+    Validates if the user has permission to access (and potentially write to) a project.
+    Returns: None if authorized, or an error message string if denied.
+    """
+    conf = (config or {}).get("configurable", {})
+    user_role = conf.get("role", "developer")
+    is_superuser = conf.get("is_superuser", False)
+    allowed_ids = conf.get("allowed_projects", [])
+
+    # Global roles (Admin/Superuser/Consultant) bypass visibility check
+    is_global = is_superuser or user_role in ["admin", "consultant"]
+    
+    # 1. Visibility Check
+    if not is_global:
+        if project_id and project_id not in allowed_ids:
+            return f"⚠️ ACCESS DENIED: You are only authorized for projects: {', '.join(allowed_ids)}"
+    
+    # 2. Write Check
+    if write:
+        if user_role == "consultant":
+            return "⚠️ READ-ONLY: As a Consultant, you can view data but are not authorized to create or modify issues."
+        
+        # Developer must have visibility to write
+        if user_role == "developer" and project_id and project_id not in allowed_ids:
+             return f"⚠️ ACCESS DENIED: Cannot write to unauthorized project `{project_id}`."
+
+    return None
+
+
 @tool
-def list_issues(project_id: str) -> str:
+def list_issues(project_id: str, config: dict = None) -> str:
     """
-    List all issues in a specific Plane project.
-
-    Args:
-        project_id: The UUID of the project (obtain from list_projects).
-
-    Returns a formatted list of issues with ID, name, priority, and status.
+    List issues in a project.
     """
+    error = validate_project_access(project_id, config, write=False)
+    if error:
+        return error
+
     try:
         data = _client().list_issues(project_id)
         issues = data.get("results", []) if isinstance(data, dict) else data
@@ -77,16 +117,14 @@ def list_issues(project_id: str) -> str:
 
 
 @tool
-def get_issue(project_id: str, issue_id: str) -> str:
+def get_issue(project_id: str, issue_id: str, config: dict = None) -> str:
     """
-    Get detailed information about a specific Plane issue.
-
-    Args:
-        project_id: The UUID of the project the issue belongs to.
-        issue_id: The UUID of the specific issue to retrieve.
-
-    Use this when the user asks about a specific issue by ID.
+    Get issue details.
     """
+    error = validate_project_access(project_id, config, write=False)
+    if error:
+        return error
+
     try:
         client = _client()
         # list_issues and filter — PlaneClient doesn't have a get_issue method yet
@@ -110,15 +148,14 @@ def get_issue(project_id: str, issue_id: str) -> str:
 
 
 @tool
-def list_labels(project_id: str) -> str:
+def list_labels(project_id: str, config: dict = None) -> str:
     """
-    List all labels available in a specific Plane project.
-
-    Args:
-        project_id: The UUID of the project.
-
-    Use this before creating or updating an issue with a label.
+    List labels.
     """
+    error = validate_project_access(project_id, config, write=False)
+    if error:
+        return error
+
     try:
         data = _client().list_labels(project_id)
         labels = data.get("results", []) if isinstance(data, dict) else (data or [])
@@ -142,18 +179,14 @@ def create_issue(
     title: str,
     description: str = "",
     priority: str = "none",
+    config: dict = None,
 ) -> str:
     """
-    Create a new issue in a Plane project.
-
-    Args:
-        project_id: The UUID of the project to create the issue in.
-        title: The issue title/name (required).
-        description: Optional detailed description of the issue.
-        priority: One of 'urgent', 'high', 'medium', 'low', 'none'. Defaults to 'none'.
-
-    Use this when the user wants to create a new task, bug, or feature request.
+    Create a new issue.
     """
+    error = validate_project_access(project_id, config, write=True)
+    if error:
+        return error
     valid_priorities = {"urgent", "high", "medium", "low", "none"}
     if priority not in valid_priorities:
         priority = "none"
@@ -182,20 +215,14 @@ def create_subtask(
     title: str,
     description: str = "",
     priority: str = "none",
+    config: dict = None,
 ) -> str:
     """
-    Create a sub-task (child issue) under an existing Plane issue.
-
-    Args:
-        project_id: The UUID of the project.
-        parent_issue_id: The UUID of the parent issue this sub-task belongs to.
-        title: The sub-task title (required).
-        description: Optional detailed description.
-        priority: One of 'urgent', 'high', 'medium', 'low', 'none'.
-
-    Use this when the user says 'add a subtask to <issue>', 'create a child task
-    under <issue>', or similar. Always confirm the parent issue ID first.
+    Create a sub-task.
     """
+    error = validate_project_access(project_id, config, write=True)
+    if error:
+        return error
     valid_priorities = {"urgent", "high", "medium", "low", "none"}
     if priority not in valid_priorities:
         priority = "none"
@@ -219,20 +246,13 @@ def create_subtask(
 
 
 @tool
-def update_issue(project_id: str, issue_id: str, updates: dict) -> str:
+def update_issue(project_id: str, issue_id: str, updates: dict, config: dict = None) -> str:
     """
-    Update fields of an existing Plane issue.
-
-    Args:
-        project_id: The UUID of the project.
-        issue_id: The UUID of the issue to update.
-        updates: A dictionary of fields to update. Supported keys:
-                 'name' (str), 'priority' (str: urgent/high/medium/low/none),
-                 'description' (str), 'label_ids' (list of label UUIDs).
-
-    Use this when the user wants to change the priority, title, or other
-    attributes of an existing issue.
+    Update issue.
     """
+    error = validate_project_access(project_id, config, write=True)
+    if error:
+        return error
     try:
         result = _client().update_issue(project_id, issue_id, updates)
         updated_fields = ", ".join(updates.keys())
@@ -247,17 +267,13 @@ def update_issue(project_id: str, issue_id: str, updates: dict) -> str:
 
 
 @tool
-def add_comment(project_id: str, issue_id: str, comment: str) -> str:
+def add_comment(project_id: str, issue_id: str, comment: str, config: dict = None) -> str:
     """
-    Add a comment to an existing Plane issue.
-
-    Args:
-        project_id: The UUID of the project.
-        issue_id: The UUID of the issue to comment on.
-        comment: The text content of the comment to post.
-
-    Use this when the user wants to leave a note or update on an issue.
+    Add comment.
     """
+    error = validate_project_access(project_id, config, write=True)
+    if error:
+        return error
     try:
         _client().add_comment(project_id, issue_id, comment)
         return f"✅ Comment posted to issue `{issue_id}` successfully."

@@ -133,11 +133,11 @@ export const api = {
     return result.data ?? result;
   },
 
-  login: async (username: string, password: string): Promise<LoginResponse> => {
+  login: async (email: string, password: string): Promise<LoginResponse> => {
     const res = await fetch(`${API_BASE}/auth/token/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -147,11 +147,11 @@ export const api = {
   },
 };
 
-export async function login(username: string, password: string): Promise<LoginResponse> {
+export async function login(email: string, password: string): Promise<LoginResponse> {
   const res = await fetch(`${API_BASE}/auth/token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -167,7 +167,7 @@ export async function logout(): Promise<void> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh }),
-    }).catch(() => {});
+    }).catch(() => { });
   }
   auth.clear();
 }
@@ -245,6 +245,14 @@ export async function fetchSessions(page = 1): Promise<PaginatedResponse<Session
 export async function syncSession(sessionId: number): Promise<void> {
   const res = await apiFetch(`/sessions/${sessionId}/sync/`, { method: 'POST' });
   if (!res.ok) throw new Error('Failed to sync session');
+}
+
+export async function approveSession(sessionId: number): Promise<void> {
+  const res = await apiFetch(`/sessions/${sessionId}/approve/`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error || 'Failed to approve session');
+  }
 }
 
 // ─── Issues ───────────────────────────────────────────────────────────────────
@@ -399,6 +407,7 @@ export interface WsEvent {
  * Opens an authenticated WebSocket connection to a conversation.
  * Pass "new" to start a fresh conversation, or a UUID to resume one.
  * Pass `model` to override the LLM used for this connection.
+ * Pass `projectId` to scope the conversation to a specific project.
  */
 export function openChatSocket(
   conversationId: 'new' | string,
@@ -412,11 +421,13 @@ export function openChatSocket(
     onClose?: () => void;
   },
   model?: string,
+  projectId?: string,
 ): WebSocket {
   const token = auth.getAccessToken();
   const path = conversationId === 'new' ? 'new' : conversationId;
   let wsUrl = `/ws/chat/${path}/?token=${token ?? ''}`;
   if (model) wsUrl += `&model=${encodeURIComponent(model)}`;
+  if (projectId) wsUrl += `&project_id=${encodeURIComponent(projectId)}`;
   // In dev, Vite proxies /ws → ws://localhost:8002/ws
   const fullUrl = wsUrl.startsWith('/')
     ? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${wsUrl}`

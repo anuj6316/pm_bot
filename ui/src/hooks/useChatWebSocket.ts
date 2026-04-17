@@ -10,12 +10,12 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
-export function useChatWebSocket(loadConversations: () => void, selectedModelId?: string) {
+export function useChatWebSocket(loadConversations: () => void, selectedModelId?: string, projectId?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [wsError, setWsError] = useState('');
   const [isSending, setIsSending] = useState(false);
-  
+
   const wsRef = useRef<WebSocket | null>(null);
   const streamingIdRef = useRef<string | null>(null);
   const pendingMessageRef = useRef<string | null>(null);
@@ -46,7 +46,7 @@ export function useChatWebSocket(loadConversations: () => void, selectedModelId?
       onConnected: (newId, model) => {
         setActiveConvId(newId);
         if (convId === 'new') loadConversations();
-        
+
         if (pendingMessageRef.current) {
           const text = pendingMessageRef.current;
           pendingMessageRef.current = null;
@@ -97,9 +97,9 @@ export function useChatWebSocket(loadConversations: () => void, selectedModelId?
         setIsSending(false);
       },
       onClose: () => setIsSending(false),
-    }, selectedModelId);
+    }, selectedModelId, projectId);
     wsRef.current = ws;
-  }, [loadConversations, selectedModelId]);
+  }, [loadConversations, selectedModelId, projectId]);
 
   useEffect(() => { return () => { wsRef.current?.close(); }; }, []);
 

@@ -22,9 +22,52 @@ class SessionViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # ViewSet generally doesn't need select_related if no FKs are pre-fetched, 
-        # but keeping it for future-proofing or if models evolve.
-        return super().get_queryset()
+        """
+        Filter sessions:
+        1. Only those created by the current user.
+        2. (Optional) Filter by project if project mapping is added to sessions.
+        """
+        user = self.request.user
+        if user.is_superuser:
+            return super().get_queryset()
+
+        # In this multi-tenant setup, sessions must be owned by the requester
+        return super().get_queryset().filter(created_by=user)
+
+    @extend_schema(
+        summary="Approve session",
+        description="Approve a completed session to trigger the final Plane integration.",
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """
+        Approve a completed session. This triggers the process_approved_session task.
+        """
+        session = self.get_object()
+
+        if session.status != "COMPLETED":
+            return Response(
+                {"error": "Only completed sessions can be approved"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if session.is_approved:
+            return Response(
+                {"error": "Session is already approved"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Mark as approved and trigger the final integration task
+        session.is_approved = True
+        session.save(update_fields=["is_approved", "updated_at"])
+
+        # Trigger the approved session processing task
+        from .tasks import process_approved_session
+
+        process_approved_session.delay(session.id)
+
+        return Response({"status": "Session approved", "is_approved": True})
 
     @extend_schema(
         summary="Sync session",

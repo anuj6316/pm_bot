@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiTypes
 
+from authentication.permissions import DomainRolePermission
 from .plane.client import PlaneClient
 from .plane.exceptions import PlaneAPIError
 
@@ -14,18 +15,25 @@ logger = logging.getLogger(__name__)
 class IssueViewSet(viewsets.ViewSet):
     """
     Retrieve issues from Plane, organized by project.
+    Strictly enforced by User Role and authorization list.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, DomainRolePermission]
 
-    def _get_all_projects_and_issues(self):
+    def _get_all_projects_and_issues(self, request):
         """
-        Fetch all projects + their issues from Plane.
-        Returns (projects, grouped_dict) where grouped_dict maps project_id → {project, issues}.
+        Fetch all projects + their issues from Plane, then filter by user access.
         """
+        user = request.user
+        allowed_ids = user.get_allowed_projects()
+        
+        # Performance optimization: if restricted and list is empty, return early
+        if allowed_ids is not None and not allowed_ids:
+            return [], {}
+
         client = PlaneClient()
         try:
             projects_data = client.list_projects()
-            projects = (
+            all_projects = (
                 projects_data.get("results", [])
                 if isinstance(projects_data, dict)
                 else (projects_data or [])
@@ -33,6 +41,12 @@ class IssueViewSet(viewsets.ViewSet):
         except PlaneAPIError as e:
             logger.error(f"Failed to fetch projects: {e}")
             return [], {}
+
+        # Filter projects based on user access
+        projects = [
+            p for p in all_projects 
+            if allowed_ids is None or str(p.get("id")).lower() in [str(aid).lower() for aid in allowed_ids]
+        ]
 
         grouped = {}
         for project in projects:
@@ -95,7 +109,7 @@ class IssueViewSet(viewsets.ViewSet):
     )
     def list(self, request):
         """GET /api/v1/issues/ — flat list of all issues across all projects."""
-        _, grouped = self._get_all_projects_and_issues()
+        _, grouped = self._get_all_projects_and_issues(request)
         all_issues = []
         for group in grouped.values():
             all_issues.extend(group["issues"])
@@ -111,7 +125,7 @@ class IssueViewSet(viewsets.ViewSet):
         """
         GET /api/v1/issues/by_project/
         """
-        _, grouped = self._get_all_projects_and_issues()
+        _, grouped = self._get_all_projects_and_issues(request)
         result = sorted(grouped.values(), key=lambda g: g["project"]["name"])
         return Response(result)
 

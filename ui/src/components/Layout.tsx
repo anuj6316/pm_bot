@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ListTodo, MessageSquare, Settings, LogOut, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, ListTodo, MessageSquare, Settings, LogOut, User as UserIcon, Users, UserCircle } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useAuth } from '@/src/contexts/AuthContext';
 
@@ -18,6 +18,10 @@ export function Layout() {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: ListTodo,        label: 'Issues',    path: '/issues' },
     { icon: MessageSquare,   label: 'Chat',      path: '/chat' },
+    { icon: UserCircle,      label: 'Profile',   path: '/profile' },
+    ...(user?.role === 'admin' || user?.role === 'consultant' || user?.is_superuser
+      ? [{ icon: Users, label: 'Users', path: '/users' }] 
+      : []),
     { icon: Settings,        label: 'Settings',  path: '/settings' },
   ];
 
@@ -113,10 +117,8 @@ export function Layout() {
         {isChat
           ? <div className="flex-1 flex min-h-0"><Outlet /></div>
           : (
-            <div className="flex-1 overflow-y-auto p-8">
-              <div className="max-w-5xl mx-auto">
-                <Outlet />
-              </div>
+            <div className="flex-1 overflow-y-auto p-8 w-full">
+              <Outlet />
             </div>
           )}
       </main>

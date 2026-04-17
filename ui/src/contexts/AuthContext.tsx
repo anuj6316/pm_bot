@@ -40,8 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = async (username: string, password: string) => {
-    const tokens = await api.login(username, password);
+  const login = async (email: string, password: string) => {
+    const tokens = await api.login(email, password);
     auth.setTokens(tokens.access, tokens.refresh);
     await fetchUserProfile();
   };

@@ -24,7 +24,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
-from langchain_core.messages import AIMessageChunk, HumanMessage
+from langchain_core.messages import AIMessageChunk, HumanMessage, SystemMessage
 
 from .agent.graph import create_chat_agent, ALLOWED_MODELS, _DEFAULT_MODEL
 from .agent.memory import load_history, save_message, set_conversation_title
@@ -171,8 +171,29 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         try:
             async with asyncio.timeout(timeout):
+                # Prepare runtime configuration for tools and persona
+                role = getattr(self.user, "role", "developer")
+                config = {
+                    "configurable": {
+                        "allowed_projects": self.user.get_allowed_projects(),
+                        "is_superuser": self.user.is_superuser,
+                        "role": role,
+                    }
+                }
+
+                # Persona augmentation: Tell the agent its role and constraints
+                role_instruction = f"\n\n[SECURITY CONTEXT]: Your current user is logged in as a {role.upper()}."
+                if role == "consultant":
+                    role_instruction += " You have global read-access but are STICTLY READ-ONLY for Plane operations (no creating/updating issues)."
+                elif role == "developer":
+                    role_instruction += " You can only read/write to specific authorized projects."
+                
+                # Prepend the role instruction to the conversation context
+                input_messages = [SystemMessage(content=role_instruction)] + input_messages
+
                 async for chunk, metadata in self.agent.astream(
                     {"messages": input_messages},
+                    config=config,
                     stream_mode="messages",
                 ):
                     # --- AI token streaming ---

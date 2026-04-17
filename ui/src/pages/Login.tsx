@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react';
 export function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ export function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(username, password);
+      await login(email, password);
       navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -53,12 +53,12 @@ export function Login() {
               )}
               <div className="space-y-2">
                 <Input
-                  type="text"
-                  placeholder="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
-                  autoComplete="username"
+                  autoComplete="email"
                 />
               </div>
               <div className="space-y-2">
