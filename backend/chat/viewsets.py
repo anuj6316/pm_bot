@@ -11,6 +11,8 @@ from .serializers import (
     MessageSerializer,
 )
 from .agent.graph import ALLOWED_MODELS, _DEFAULT_MODEL
+from .agent.query_graph import run_query
+from authentication.models import UserAPIKey
 
 _MODEL_META: dict[str, dict] = {
     "groq/llama-3.3-70b-versatile": {
@@ -93,24 +95,66 @@ class ChatModelViewSet(viewsets.ViewSet):
         """
         GET /api/v1/chat/models/
         """
+        user_keys = {
+            k.provider: k.api_key for k in UserAPIKey.objects.filter(user=request.user)
+        }
+        
         result = []
         for model_id in ALLOWED_MODELS:
             meta = _MODEL_META.get(model_id, {})
             env_var = meta.get("env_var")
-            available = (env_var is None) or bool(os.environ.get(env_var, "").strip())
+            provider = meta.get("provider")
+            
+            # Available if system key exists OR user has provided their own key for this provider
+            system_available = (env_var is None) or bool(os.environ.get(env_var, "").strip())
+            user_available = provider in user_keys
+            
             result.append(
                 {
                     "id": model_id,
                     "label": meta.get("label", model_id),
-                    "provider": meta.get("provider", ""),
+                    "provider": provider,
                     "badge": meta.get("badge", ""),
                     "env_var": env_var,
-                    "available": available,
+                    "available": system_available or user_available,
                     "is_default": model_id == _DEFAULT_MODEL,
                 }
             )
         return Response(result)
 
+
+@extend_schema(tags=["Chat"])
+class ChatQueryViewSet(viewsets.ViewSet):
+    """
+    ViewSet for high-level system queries.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Chat Interface Model",
+        description="Resolving user query based on the user's ORM and Plane context.",
+    )
+    @action(detail=False, methods=['post'])
+    def query(self, request):
+        query = request.data.get("query")
+        model_name = request.data.get("model")
+
+        if not query:
+            return Response({"error": "Query is required"}, status=400)
+
+        answer = run_query(
+            query=query,
+            user_id=request.user.id,
+            user_role=request.user.role,
+            allowed_projects=request.user.projects or [],
+            model_name=model_name
+        )
+
+        return Response({
+            "query": query,
+            "answer": answer,
+            "source": "orchestrator"
+        })
 
 @extend_schema(tags=["Chat"])
 class ConversationViewSet(viewsets.ModelViewSet):

@@ -10,6 +10,7 @@ so they remain safe for concurrent async use.
 
 import logging
 from langchain_core.tools import tool
+from langchain_core.runnables import RunnableConfig
 from integrations.plane.client import PlaneClient
 from integrations.plane.exceptions import PlaneAPIError
 
@@ -27,11 +28,11 @@ def _client() -> PlaneClient:
 
 
 @tool
-def list_projects(config: dict = None) -> str:
+def list_projects(config: RunnableConfig) -> str:
     """
     List authorized projects.
     """
-    conf = (config or {}).get("configurable", {})
+    conf = config.get("configurable", {})
     user_role = conf.get("role", "developer")
     allowed_ids = conf.get("allowed_projects", [])
     is_superuser = conf.get("is_superuser", False)
@@ -58,12 +59,12 @@ def list_projects(config: dict = None) -> str:
         return f"Error fetching projects: {e.message}"
 
 
-def validate_project_access(project_id: str, config: dict, write: bool = False) -> str | None:
+def validate_project_access(project_id: str, config: RunnableConfig, write: bool = False) -> str | None:
     """
     Validates if the user has permission to access (and potentially write to) a project.
     Returns: None if authorized, or an error message string if denied.
     """
-    conf = (config or {}).get("configurable", {})
+    conf = config.get("configurable", {})
     user_role = conf.get("role", "developer")
     is_superuser = conf.get("is_superuser", False)
     allowed_ids = conf.get("allowed_projects", [])
@@ -89,7 +90,7 @@ def validate_project_access(project_id: str, config: dict, write: bool = False) 
 
 
 @tool
-def list_issues(project_id: str, config: dict = None) -> str:
+def list_issues(project_id: str, config: RunnableConfig) -> str:
     """
     List issues in a project.
     """
@@ -117,7 +118,7 @@ def list_issues(project_id: str, config: dict = None) -> str:
 
 
 @tool
-def get_issue(project_id: str, issue_id: str, config: dict = None) -> str:
+def get_issue(project_id: str, issue_id: str, config: RunnableConfig) -> str:
     """
     Get issue details.
     """
@@ -148,7 +149,7 @@ def get_issue(project_id: str, issue_id: str, config: dict = None) -> str:
 
 
 @tool
-def list_labels(project_id: str, config: dict = None) -> str:
+def list_labels(project_id: str, config: RunnableConfig) -> str:
     """
     List labels.
     """
@@ -179,7 +180,7 @@ def create_issue(
     title: str,
     description: str = "",
     priority: str = "none",
-    config: dict = None,
+    config: RunnableConfig = None,
 ) -> str:
     """
     Create a new issue.
@@ -215,7 +216,7 @@ def create_subtask(
     title: str,
     description: str = "",
     priority: str = "none",
-    config: dict = None,
+    config: RunnableConfig = None,
 ) -> str:
     """
     Create a sub-task.
@@ -246,7 +247,7 @@ def create_subtask(
 
 
 @tool
-def update_issue(project_id: str, issue_id: str, updates: dict, config: dict = None) -> str:
+def update_issue(project_id: str, issue_id: str, updates: dict, config: RunnableConfig = None) -> str:
     """
     Update issue.
     """
@@ -267,7 +268,7 @@ def update_issue(project_id: str, issue_id: str, updates: dict, config: dict = N
 
 
 @tool
-def add_comment(project_id: str, issue_id: str, comment: str, config: dict = None) -> str:
+def add_comment(project_id: str, issue_id: str, comment: str, config: RunnableConfig = None) -> str:
     """
     Add comment.
     """

@@ -71,7 +71,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.active_model = (
             requested_model if requested_model in ALLOWED_MODELS else _DEFAULT_MODEL
         )
-        self.agent = create_chat_agent(self.active_model)
+        self.agent = create_chat_agent(self.active_model, user_id=user.id)
 
         # Resolve or create conversation
         conversation_id = self.scope["url_route"]["kwargs"].get("conversation_id")

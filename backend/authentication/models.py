@@ -40,3 +40,29 @@ class User(AbstractUser):
     def get_allowed_projects(self) -> list[str]:
         """Return the list of project IDs this user is authorized to interact with."""
         return self.projects or []
+
+class UserAPIKey(models.Model):
+    """
+    Stores API keys provided by the user for different LLM providers.
+    """
+    class Provider(models.TextChoices):
+        OPENAI = "OpenAI", "OpenAI"
+        GROQ = "Groq", "Groq"
+        ANTHROPIC = "Anthropic", "Anthropic"
+        GOOGLE = "Google", "Google"
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="api_keys"
+    )
+    provider = models.CharField(max_length=50, choices=Provider.choices)
+    api_key = models.CharField(max_length=255) # In a real app, encrypt this!
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("user", "provider")
+        verbose_name = "User API Key"
+        verbose_name_plural = "User API Keys"
+
+    def __str__(self):
+        return f"{self.user.email} - {self.provider}"

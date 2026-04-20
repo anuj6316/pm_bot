@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Check, Zap, Info } from 'lucide-react';
+import { ChevronDown, Check, Zap, Info, Plus, Settings } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import type { ChatModel } from '@/src/lib/api';
+import { ApiKeyModal } from './ApiKeyModal';
 
 const PROVIDER_DOT: Record<string, string> = {
   Groq: 'bg-orange-500', OpenAI: 'bg-green-600',
@@ -12,11 +13,13 @@ const PROVIDER_TEXT: Record<string, string> = {
   Anthropic: 'text-violet-700', Google: 'text-blue-700', Ollama: 'text-gray-600',
 };
 
-export function ModelSelector({ models, selected, onSelect, disabled }: {
+export function ModelSelector({ models, selected, onSelect, disabled, onRefresh }: {
   models: ChatModel[]; selected: ChatModel | null;
   onSelect: (m: ChatModel) => void; disabled?: boolean;
+  onRefresh?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
@@ -77,8 +80,24 @@ export function ModelSelector({ models, selected, onSelect, disabled }: {
               </div>
             ))}
           </div>
+
+          <div className="p-2 border-t border-gray-100 bg-gray-50/50">
+            <button
+              onClick={() => { setApiKeyModalOpen(true); setOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-apple-blue hover:bg-apple-blue/5 transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add or Update API Keys
+            </button>
+          </div>
         </div>
       )}
+
+      <ApiKeyModal 
+        isOpen={apiKeyModalOpen} 
+        onClose={() => setApiKeyModalOpen(false)} 
+        onSuccess={() => onRefresh?.()}
+      />
     </div>
   );
 }

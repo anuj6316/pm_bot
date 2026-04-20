@@ -5,6 +5,7 @@ import { Button } from '@/src/components/ui/Button';
 import { Input } from '@/src/components/ui/Input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/Card';
 import { Loader2 } from 'lucide-react';
+import { Logo } from '@/src/components/Logo';
 
 export function Login() {
   const navigate = useNavigate();
@@ -32,11 +33,9 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center bg-apple-bg p-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-apple-blue flex items-center justify-center shadow-md mb-4">
-            <span className="text-white font-bold text-xl">PM</span>
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Welcome to PM Bot</h1>
-          <p className="text-apple-text-muted text-sm mt-1">Sign in to your workspace</p>
+          <Logo className="w-16 h-16 shadow-xl shadow-apple-blue/20 mb-4" />
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-br from-apple-text to-apple-text/70 bg-clip-text text-transparent">PM.ai</h1>
+          <p className="text-apple-text-muted text-sm mt-1">Sign in to your intelligent workspace</p>
         </div>
 
         <Card className="border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white/70 backdrop-blur-xl">

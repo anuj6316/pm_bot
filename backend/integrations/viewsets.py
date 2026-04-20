@@ -17,6 +17,7 @@ class IssueViewSet(viewsets.ViewSet):
     Retrieve issues from Plane, organized by project.
     Strictly enforced by User Role and authorization list.
     """
+
     permission_classes = [permissions.IsAuthenticated, DomainRolePermission]
 
     def _get_all_projects_and_issues(self, request):
@@ -25,7 +26,7 @@ class IssueViewSet(viewsets.ViewSet):
         """
         user = request.user
         allowed_ids = user.get_allowed_projects()
-        
+
         # Performance optimization: if restricted and list is empty, return early
         if allowed_ids is not None and not allowed_ids:
             return [], {}
@@ -44,9 +45,19 @@ class IssueViewSet(viewsets.ViewSet):
 
         # Filter projects based on user access
         projects = [
-            p for p in all_projects 
-            if allowed_ids is None or str(p.get("id")).lower() in [str(aid).lower() for aid in allowed_ids]
+            p
+            for p in all_projects
+            if allowed_ids is None
+            or str(p.get("id")).lower() in [str(aid).lower() for aid in allowed_ids]
         ]
+
+        logger.info(
+            "Project filtering for user %s: allowed_ids=%s, total=%d, filtered=%d",
+            request.user.email,
+            allowed_ids,
+            len(all_projects),
+            len(projects),
+        )
 
         grouped = {}
         for project in projects:

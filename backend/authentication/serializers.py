@@ -71,3 +71,11 @@ class SelectedProjectSerializer(serializers.Serializer):
     """Serializer for setting selected project"""
 
     project_id = serializers.CharField(required=True)
+
+class UserAPIKeySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        from .models import UserAPIKey
+        model = UserAPIKey
+        fields = ["provider", "api_key", "updated_at"]
+        extra_kwargs = {'api_key': {'write_only': True}}

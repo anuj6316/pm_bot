@@ -271,3 +271,36 @@ SPECTACULAR_SETTINGS = {
         }
     },
 }
+
+# ========================
+# Logging Configuration
+# ========================
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "detailed": {
+            "format": "{levelname} {asctime} {module} {funcName}:{lineno} → {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "detailed",
+        },
+    },
+    "loggers": {
+        "authentication": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+        "integrations": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+    },
+}

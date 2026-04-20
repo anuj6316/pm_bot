@@ -1,3 +1,4 @@
+import logging
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,8 +13,11 @@ from .serializers import (
     UserCreateSerializer,
     ProjectSerializer,
     SelectedProjectSerializer,
+    UserAPIKeySerializer,
 )
 from .permissions import CanManageUsers
+
+logger = logging.getLogger(__name__)
 
 
 class UserViewSet(viewsets.ViewSet):
@@ -45,7 +49,7 @@ class UserViewSet(viewsets.ViewSet):
         try:
             plane = PlaneClient()
             plane_res = plane.list_projects() or []
-            
+
             # Handle Plane pagination
             if isinstance(plane_res, dict) and "results" in plane_res:
                 all_projects = plane_res["results"]
@@ -55,16 +59,46 @@ class UserViewSet(viewsets.ViewSet):
                 all_projects = []
 
             # For developers, filter by their assigned projects
-            if (
-                request.user.role in ["developer"]
-                and not request.user.is_superuser
-            ):
-                allowed_ids = [str(pid).lower() for pid in request.user.projects]
+            if request.user.role in ["developer"] and not request.user.is_superuser:
+                allowed_ids = request.user.get_allowed_projects()
+
+                logger.info(
+                    "Project filtering: user=%s role=%s is_superuser=%s allowed_ids=%s",
+                    request.user.email,
+                    request.user.role,
+                    request.user.is_superuser,
+                    allowed_ids,
+                )
+                logger.debug("Total projects from Plane API: %d", len(all_projects))
+
+                # Log first 3 projects as sample
+                for i, p in enumerate(all_projects[:3]):
+                    logger.debug(
+                        "Plane project[%d]: id=%s identifier=%s name=%s",
+                        i,
+                        p.get("id"),
+                        p.get("identifier"),
+                        p.get("name"),
+                    )
+
                 filtered_projects = [
                     p
                     for p in all_projects
-                    if str(p.get("id", "")).lower() in allowed_ids
+                    if str(p.get("id", "")).lower()
+                    in [str(aid).lower() for aid in allowed_ids]
                 ]
+
+                logger.info(
+                    "Filtered projects: %d (from %d total)",
+                    len(filtered_projects),
+                    len(all_projects),
+                )
+
+                for p in filtered_projects:
+                    logger.info(
+                        "  → Including: id=%s name=%s", p.get("id"), p.get("name")
+                    )
+
                 return Response(
                     {"msg": "Projects fetched successfully", "data": filtered_projects}
                 )
@@ -105,6 +139,32 @@ class UserViewSet(viewsets.ViewSet):
             return Response({"msg": "Selected project updated successfully"})
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserAPIKeyViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing user API keys.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserAPIKeySerializer
+
+    def get_queryset(self):
+        from .models import UserAPIKey
+        return UserAPIKey.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        from .models import UserAPIKey
+        # Update if already exists for this provider
+        provider = serializer.validated_data.get('provider')
+        existing = UserAPIKey.objects.filter(user=self.request.user, provider=provider).first()
+        if existing:
+            serializer.instance = existing
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def providers(self, request):
+        """List available providers for API keys"""
+        from .models import UserAPIKey
+        return Response([{"id": c[0], "label": c[1]} for c in UserAPIKey.Provider.choices])
 
     def list(self, request):
         """GET /api/v1/user/ - Get current user profile"""
@@ -199,7 +259,7 @@ class UserViewSet(viewsets.ViewSet):
         from django.db.models import Q
 
         User = get_user_model()
-        
+
         # If Admin/Consultant/Superuser: see all
         if request.user.role in ["admin", "consultant"] or request.user.is_superuser:
             users = User.objects.all().order_by("-date_joined")
@@ -211,7 +271,7 @@ class UserViewSet(viewsets.ViewSet):
                 users = User.objects.filter(pk=request.user.pk)
             else:
                 # Matches any user where their projects list contains ANY item from the requester's list
-                query = Q(pk=request.user.pk) # Always see self
+                query = Q(pk=request.user.pk)  # Always see self
                 for p_id in user_projects:
                     query |= Q(projects__contains=p_id)
                 users = User.objects.filter(query).distinct().order_by("-date_joined")

@@ -376,6 +376,50 @@ export async function deleteConversation(id: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete conversation');
 }
 
+export interface ChatQueryResponse {
+  query: string;
+  answer: string;
+  source: string;
+}
+
+export async function postChatQuery(query: string, model?: string): Promise<ChatQueryResponse> {
+  const res = await apiFetch('/chat/chatquery/query/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, model }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error || 'Query failed');
+  }
+  return res.json();
+}
+
+// ─── API Keys ───────────────────────────────────────────────────────────────
+
+export interface ApiKeyProvider {
+  id: string;
+  label: string;
+}
+
+export async function fetchApiKeyProviders(): Promise<ApiKeyProvider[]> {
+  const res = await apiFetch('/user/api-keys/providers/');
+  if (!res.ok) throw new Error('Failed to fetch providers');
+  return res.json();
+}
+
+export async function saveApiKey(provider: string, apiKey: string): Promise<void> {
+  const res = await apiFetch('/user/api-keys/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, api_key: apiKey }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { msg?: string }).msg || 'Failed to save API key');
+  }
+}
+
 export interface HistoryMessage {
   id: number;
   role: 'human' | 'assistant' | 'tool';

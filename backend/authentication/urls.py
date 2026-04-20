@@ -1,8 +1,13 @@
-from django.urls import path
-from .viewsets import UserViewSet
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .viewsets import UserViewSet, UserAPIKeyViewSet
+
+router = DefaultRouter()
+router.register(r"api-keys", UserAPIKeyViewSet, basename="user-api-key")
 
 urlpatterns = [
     # ── User Management (Specific paths first) ────────────────────────
+    path("", include(router.urls)),
     path(
         "list_users/",
         UserViewSet.as_view({"get": "list_users"}),

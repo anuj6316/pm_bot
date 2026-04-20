@@ -47,13 +47,14 @@ ALLOWED_MODELS: dict[str, str] = {
 }
 
 
-def create_chat_agent(model_name: str | None = None):
+def create_chat_agent(model_name: str | None = None, user_id: int | None = None):
     """
     Build and return a compiled LangGraph ReAct agent.
 
     Args:
         model_name: Optional LiteLLM model string (e.g. 'groq/llama-3.3-70b-versatile').
                     Must be a key in ALLOWED_MODELS. Defaults to LLM_MODEL env var.
+        user_id: Optional ID of the user to fetch custom API keys for.
 
     Returns:
         Compiled StateGraph compatible with .astream(stream_mode="messages").
@@ -69,9 +70,27 @@ def create_chat_agent(model_name: str | None = None):
 
     logger.info(f"Creating chat agent with model: {resolved_model}")
 
+    extra_kwargs = {}
+    if user_id:
+        try:
+            from authentication.models import UserAPIKey
+            provider = resolved_model.split('/')[0].capitalize()
+            if provider == 'Gemini': provider = 'Google' # Map gemini/ prefix to Google provider
+            
+            ukey = UserAPIKey.objects.filter(user_id=user_id, provider=provider).first()
+            if ukey:
+                logger.info(f"Using user-provided API key for {provider}")
+                if provider == 'OpenAI': extra_kwargs['openai_api_key'] = ukey.api_key
+                elif provider == 'Groq': extra_kwargs['groq_api_key'] = ukey.api_key
+                elif provider == 'Anthropic': extra_kwargs['anthropic_api_key'] = ukey.api_key
+                elif provider == 'Google': extra_kwargs['google_api_key'] = ukey.api_key
+        except Exception as e:
+            logger.error(f"Error fetching user API key: {e}")
+
     model = ChatLiteLLM(
         model=resolved_model,
         streaming=True,
+        **extra_kwargs
     )
 
     # LangGraph ≥0.2 removed `state_modifier` — use `prompt` instead.

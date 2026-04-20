@@ -1,3 +1,4 @@
+import logging
 from dotenv import load_dotenv
 import os
 import requests
@@ -7,9 +8,16 @@ from .exceptions import (
     PlaneNotFoundError,
     PlaneValidationError,
 )
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 class PlaneClient:
@@ -22,13 +30,13 @@ class PlaneClient:
     update_issue()      ← calls _request()
     delete_issue()      ← calls _request()
     """
+
     @retry(
         retry=retry_if_exception_type(PlaneAPIError),
         wait=wait_exponential(multiplier=1, min=2, max=30),
         stop=stop_after_attempt(3),
         reraise=True,
     )
-
     def __init__(self):
         self.base_url = os.getenv("PLANE_BASE_URL")
         self.token = os.getenv("PLANE_API_TOKEN")
@@ -66,9 +74,16 @@ class PlaneClient:
             raise PlaneAPIError(str(e))
 
     def list_projects(self):
-        return self._request(
+        response = self._request(
             "GET", f"/api/v1/workspaces/{self.workspace_slug}/projects/"
         )
+        project_count = len(
+            response.get("results", [])
+            if isinstance(response, dict)
+            else (response or [])
+        )
+        logger.debug("Plane API list_projects: returned %d projects", project_count)
+        return response
 
     def create_project(self, name: str, identifier: str):
         """

@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Loader2, MessageSquarePlus, Trash2, Mic, Plus, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Send, Loader2, MessageSquarePlus, Trash2, Mic, Plus, PanelLeftClose, PanelLeftOpen, Database, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
-import { fetchConversations, fetchChatModels, deleteConversation, type Conversation, type ChatModel } from '@/src/lib/api';
-import { useChatWebSocket } from '@/src/hooks/useChatWebSocket';
+import { 
+  fetchConversations, 
+  fetchChatModels, 
+  deleteConversation, 
+  postChatQuery,
+  type Conversation, 
+  type ChatModel 
+} from '@/src/lib/api';
+import { useChatWebSocket, type ChatMessage } from '@/src/hooks/useChatWebSocket';
 import { ModelSelector, ModelInfoTooltip } from '@/src/components/chat/ModelSelector';
 import { MessageBubble } from '@/src/components/chat/MessageBubble';
 import { useProject } from '@/src/contexts/ProjectContext';
@@ -16,6 +23,11 @@ export function Chat() {
   const [selectedModel, setSelectedModel] = useState<ChatModel | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
+
+  // New: Toggle between Conversation mode and DB Query mode
+  const [mode, setMode] = useState<'chat' | 'query'>('chat');
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+  const [isQuerying, setIsQuerying] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -31,26 +43,38 @@ export function Chat() {
     }
   }, []);
 
+  const loadModels = useCallback(async () => {
+    try {
+      const list = await fetchChatModels();
+      setModels(list);
+      setSelectedModel((prev) => {
+        if (prev && list.find((m) => m.id === prev.id)) return prev;
+        return list.find((m) => m.is_default && m.available) ?? list.find((m) => m.available) ?? null;
+      });
+    } catch { /* ignore */ }
+  }, []);
+
   const {
     connectToConversation,
     sendMessage,
-    messages,
+    messages: chatMessages,
     activeConvId,
     wsError,
-    isSending
+    isSending: isChatSending
   } = useChatWebSocket(loadConversations, selectedModel?.id, selectedProject?.id);
+
+  // Combine messages based on mode
+  const currentMessages = mode === 'query' ? localMessages : chatMessages;
+  const isSending = mode === 'query' ? isQuerying : isChatSending;
 
   useEffect(() => {
     loadConversations();
-    fetchChatModels().then((list) => {
-      setModels(list);
-      setSelectedModel(list.find((m) => m.is_default && m.available) ?? list.find((m) => m.available) ?? null);
-    }).catch(() => {});
-  }, [loadConversations]);
+    loadModels();
+  }, [loadConversations, loadModels]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [currentMessages]);
 
   // Auto-grow textarea
   useEffect(() => {
@@ -69,11 +93,50 @@ export function Chat() {
     } catch { /* ignore */ }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = inputValue.trim();
     if (!text || isSending) return;
     setInputValue('');
-    sendMessage(text);
+
+    if (mode === 'query') {
+      setIsQuerying(true);
+      const userMsg: ChatMessage = { 
+        id: `q-user-${Date.now()}`, 
+        type: 'user', 
+        text, 
+        timestamp: new Date() 
+      };
+      setLocalMessages(prev => [...prev, userMsg]);
+
+      try {
+        const res = await postChatQuery(text, selectedModel?.id);
+        const assistantMsg: ChatMessage = {
+          id: `q-ai-${Date.now()}`,
+          type: 'assistant',
+          text: res.answer,
+          timestamp: new Date()
+        };
+        setLocalMessages(prev => [...prev, assistantMsg]);
+      } catch (err: any) {
+        setLocalMessages(prev => [...prev, {
+          id: `q-err-${Date.now()}`,
+          type: 'error',
+          text: err.message,
+          timestamp: new Date()
+        }]);
+      } finally {
+        setIsQuerying(false);
+      }
+    } else {
+      sendMessage(text);
+    }
+  };
+
+  const toggleMode = (newMode: 'chat' | 'query') => {
+    setMode(newMode);
+    if (newMode === 'query') {
+      setLocalMessages([]);
+    }
   };
 
   return (
@@ -94,11 +157,35 @@ export function Chat() {
               <span className="text-sm font-semibold text-apple-text">Conversations</span>
             </div>
 
+            {/* Mode Switcher */}
+            <div className="flex-shrink-0 p-3 flex gap-1 bg-black/5">
+              <button
+                onClick={() => toggleMode('chat')}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                  mode === 'chat' ? "bg-white shadow-sm text-apple-blue" : "text-apple-text-muted hover:bg-white/50"
+                )}
+              >
+                <MessageSquare className="w-3 h-3" />
+                Chat
+              </button>
+              <button
+                onClick={() => toggleMode('query')}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                  mode === 'query' ? "bg-white shadow-sm text-apple-blue" : "text-apple-text-muted hover:bg-white/50"
+                )}
+              >
+                <Database className="w-3 h-3" />
+                Query
+              </button>
+            </div>
+
             {/* New chat button */}
             <div className="flex-shrink-0 p-3 border-b border-apple-border/50">
               <button
-                onClick={() => connectToConversation('new')}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-apple-text hover:bg-black/5 active:bg-black/10 transition-colors group"
+                onClick={() => { toggleMode('chat'); connectToConversation('new'); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-apple-text hover:bg-black/5 active:bg-black/10 transition-colors group cursor-pointer"
               >
                 <span className="w-7 h-7 rounded-lg bg-apple-blue flex items-center justify-center flex-shrink-0 group-hover:bg-apple-blue-hover transition-colors">
                   <MessageSquarePlus className="w-3.5 h-3.5 text-white" />
@@ -124,10 +211,10 @@ export function Chat() {
                 conversations.map((conv) => (
                   <div
                     key={conv.id}
-                    onClick={() => { if (conv.id !== activeConvId) connectToConversation(conv.id); }}
+                    onClick={() => { toggleMode('chat'); if (conv.id !== activeConvId) connectToConversation(conv.id); }}
                     className={cn(
                       'group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all text-sm mb-0.5',
-                      activeConvId === conv.id
+                      activeConvId === conv.id && mode === 'chat'
                         ? 'bg-apple-card shadow-[0_2px_8px_rgb(0,0,0,0.04)] text-apple-text font-medium'
                         : 'hover:bg-black/5 text-apple-text-muted',
                     )}
@@ -160,29 +247,48 @@ export function Chat() {
             >
               {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
             </button>
-            <ModelSelector models={models} selected={selectedModel} onSelect={setSelectedModel} disabled={isSending} />
+            <div className="flex items-center gap-2 ml-1 mr-2 px-2 py-1 bg-black/5 rounded-full">
+              <span className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                mode === 'query' ? "bg-purple-500 animate-pulse" : "bg-green-500"
+              )} />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-apple-text-muted">
+                {mode === 'query' ? 'System Query' : 'Chat Mode'}
+              </span>
+            </div>
+            <ModelSelector models={models} selected={selectedModel} onSelect={setSelectedModel} disabled={isSending} onRefresh={loadModels} />
             <ModelInfoTooltip model={selectedModel} />
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => connectToConversation('new')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-apple-blue text-white hover:bg-apple-blue-hover active:bg-apple-blue-hover/90 transition-colors shadow-sm cursor-pointer"
-            >
-              <MessageSquarePlus className="w-3.5 h-3.5" />
-              New chat
-            </button>
+            {mode === 'query' ? (
+              <button
+                onClick={() => setLocalMessages([])}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border border-apple-border hover:bg-black/5 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear
+              </button>
+            ) : (
+              <button
+                onClick={() => connectToConversation('new')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-apple-blue text-white hover:bg-apple-blue-hover active:bg-apple-blue-hover/90 transition-colors shadow-sm cursor-pointer"
+              >
+                <MessageSquarePlus className="w-3.5 h-3.5" />
+                New chat
+              </button>
+            )}
           </div>
         </div>
 
-        {wsError && (
+        {wsError && mode === 'chat' && (
           <div className="flex-shrink-0 text-sm text-red-600 bg-red-50/90 backdrop-blur-md border-b border-red-100 px-6 py-2 text-center absolute top-[57px] w-full z-10">{wsError}</div>
         )}
 
         {/* ── Messages area ────────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto w-full">
-          {!activeConvId && messages.length === 0 ? (
-            /* Empty state */
+          {mode === 'chat' && !activeConvId && currentMessages.length === 0 ? (
+            /* Empty state Chat */
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center h-full gap-5 text-center px-6">
               <div className="w-14 h-14 rounded-[20px] bg-apple-blue flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-xl tracking-tight">PM</span>
@@ -193,14 +299,27 @@ export function Chat() {
                   <p className="text-sm text-apple-text-muted mt-1.5">
                     Using <span className="font-medium text-apple-text">{selectedModel.label}</span>
                     <span className="mx-1.5 text-apple-border">·</span>
-                    Click <strong className="text-apple-text">New chat</strong> to start
+                    Conversational agent with tool access
                   </p>
                 )}
               </div>
             </motion.div>
+          ) : mode === 'query' && currentMessages.length === 0 ? (
+            /* Empty state Query */
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center h-full gap-5 text-center px-6">
+              <div className="w-14 h-14 rounded-[20px] bg-purple-600 flex items-center justify-center shadow-lg text-white">
+                <Database className="w-7 h-7" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-apple-text">System Query Mode</p>
+                <p className="text-sm text-apple-text-muted mt-1.5 max-w-sm">
+                  Ask about your assigned projects, team members, or the status of AI processing tasks directly from our database.
+                </p>
+              </div>
+            </motion.div>
           ) : (
             <div className="max-w-3xl mx-auto px-6 py-8 space-y-2">
-              {messages.map((msg) => (
+              {currentMessages.map((msg) => (
                 <MessageBubble key={msg.id} msg={msg} isSending={isSending} />
               ))}
               <div ref={messagesEndRef} className="h-4" />
@@ -212,7 +331,8 @@ export function Chat() {
         <div className="flex-shrink-0 px-6 pb-6 pt-2 bg-gradient-to-t from-apple-bg via-apple-bg/95 to-transparent">
           <div className="max-w-3xl mx-auto">
             <div className={cn(
-              'flex items-end gap-2 bg-apple-card/80 backdrop-blur-md rounded-[28px] p-2 ring-1 ring-apple-border/60 transition-shadow focus-within:ring-apple-border hover:ring-apple-border/80 shadow-[0_2px_15px_rgb(0,0,0,0.03)]'
+              'flex items-end gap-2 bg-apple-card/80 backdrop-blur-md rounded-[28px] p-2 ring-1 ring-apple-border/60 transition-shadow focus-within:ring-apple-border hover:ring-apple-border/80 shadow-[0_2px_15px_rgb(0,0,0,0.03)]',
+              mode === 'query' && 'ring-purple-200 focus-within:ring-purple-400'
             )}>
               <button disabled={isSending}
                 className="flex-shrink-0 w-[40px] h-[40px] rounded-full bg-apple-card border border-apple-border/60 flex items-center justify-center text-apple-text-muted hover:bg-black/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm ml-1 mb-0.5"
@@ -224,7 +344,7 @@ export function Chat() {
                 ref={textareaRef} rows={1} value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder="Ask anything"
+                placeholder={mode === 'query' ? "Query system status, projects or users..." : "Ask anything"}
                 disabled={isSending}
                 className="flex-1 bg-transparent border-none outline-none resize-none text-[15px] text-apple-text placeholder:text-apple-text-muted py-3 px-1 mb-0.5 disabled:cursor-not-allowed max-h-[200px] overflow-y-auto leading-relaxed"
                 style={{ minHeight: '40px' }}
@@ -241,7 +361,7 @@ export function Chat() {
                 className={cn(
                   'flex-shrink-0 w-[40px] h-[40px] rounded-full flex items-center justify-center transition-all duration-200 mb-0.5 mr-1',
                   inputValue.trim() && !isSending
-                    ? 'bg-apple-blue text-white hover:bg-apple-blue-hover shadow-md active:scale-95 cursor-pointer'
+                    ? (mode === 'query' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-apple-blue hover:bg-apple-blue-hover') + ' text-white shadow-md active:scale-95 cursor-pointer'
                     : 'bg-apple-border text-white cursor-not-allowed',
                 )}
               >
@@ -249,7 +369,7 @@ export function Chat() {
               </button>
             </div>
             <p className="text-center text-[11px] text-apple-text-muted/80 mt-3 font-medium tracking-wide">
-              PM Bot can make mistakes. Verify important information.
+              {mode === 'query' ? 'System Query mode uses the local database as source of truth.' : 'PM.ai can make mistakes. Verify important information.'}
             </p>
           </div>
         </div>
