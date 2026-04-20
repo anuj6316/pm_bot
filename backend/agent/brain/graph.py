@@ -1,9 +1,13 @@
+"""LangGraph reasoning workflow for PM Bot issue analysis."""
+
 import logging
 import os
+from typing import Any, TypedDict
+
 import mlflow
-from typing import Dict, Any, TypedDict
-from langgraph.graph import StateGraph, END
-from .nodes import analyze_issue, triage_issue, generate_response
+from langgraph.graph import END, StateGraph
+
+from .nodes import analyze_issue, generate_response, triage_issue
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +21,14 @@ except Exception as e:
 
 
 class AgentState(TypedDict):
-    """
-    State stored throughout the LangGraph workflow.
+    """State stored throughout the LangGraph workflow.
+    
+    Attributes:
+        issue_content: The original issue content to process.
+        analysis: Extracted key information and sentiment from analysis.
+        category: Triage category (BUG, FEATURE, QUESTION).
+        draft_response: Generated response draft.
+        error: Error message if any step fails.
     """
 
     issue_content: str
@@ -28,9 +38,11 @@ class AgentState(TypedDict):
     error: str
 
 
-def create_agent_graph():
-    """
-    Creates and compiles the LangGraph reasoning workflow.
+def create_agent_graph() -> StateGraph:
+    """Create and compile the LangGraph reasoning workflow.
+    
+    Returns:
+        Compiled StateGraph representing the agent workflow.
     """
     # 1. Initialize the Graph
     workflow = StateGraph(AgentState)
@@ -40,7 +52,7 @@ def create_agent_graph():
     workflow.add_node("triage", triage_issue)
     workflow.add_node("generate", generate_response)
 
-    # 3. Define Edges (Sequential for now)
+    # 3. Define Edges (Sequential flow)
     workflow.set_entry_point("analyze")
     workflow.add_edge("analyze", "triage")
     workflow.add_edge("triage", "generate")
@@ -54,9 +66,15 @@ def create_agent_graph():
 brain_graph = create_agent_graph()
 
 
-def run_brain(issue_content: str) -> Dict[str, Any]:
-    """
-    Helper function to execute the brain workflow for a given issue.
+def run_brain(issue_content: str) -> dict[str, Any]:
+    """Execute the brain workflow for a given issue.
+    
+    Args:
+        issue_content: The issue content to process.
+        
+    Returns:
+        Dictionary containing workflow results with keys:
+        - issue_content, analysis, category, draft_response, error
     """
     initial_state = {
         "issue_content": issue_content,
