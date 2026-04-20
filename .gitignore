@@ -1,55 +1,50 @@
 ```gitignore
-# Logs and temp files
-*.log
-*.tmp
-*.swp
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Environment
+# Logs
+*.log
+
+# Environment variables
 .env
 .env.local
-.env.*
-
-# Editors
-.vscode/
-.idea/
+*.env.*
 
 # Dependencies
-node_modules/
 .venv/
 venv/
-__pycache__/
-.mypy_cache/
+pip-log.txt
+pip-selfcheck.json
+
+# Coverage reports
+.coverage
+htmlcov/
+.coverage.*
+
+# Testing
 .pytest_cache/
-dist/
-build/
-target/
-.gradle/
+.hypothesis/
 
-# Compiled files
-*.pyc
-*.class
-*.o
-*.exe
-*.dll
-*.so
-*.a
-*.obj
-*.out
-
-# System files
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
 
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Compressed files
+# Documentation
+*.docx
+*.pdf
 *.zip
+*.tar.gz
+*.tar.bz2
+*.tar.xz
 *.gz
-*.tar
-*.tgz
 *.bz2
 *.xz
 *.7z
@@ -64,8 +59,4 @@ htmlcov/
 *.Z
 *.lz
 *.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
 ```

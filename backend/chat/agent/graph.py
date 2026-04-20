@@ -30,8 +30,6 @@ _DEFAULT_MODEL = os.getenv("LLM_MODEL", "openai/gpt-4o-mini")
 ALLOWED_MODELS: dict[str, str] = {
     # Groq (fast, free tier)
     "groq/llama-3.3-70b-versatile": "groq/llama-3.3-70b-versatile",
-    "groq/llama3-8b-8192": "groq/llama3-8b-8192",
-    "groq/mixtral-8x7b-32768": "groq/mixtral-8x7b-32768",
     # OpenAI
     "openai/gpt-4o-mini": "openai/gpt-4o-mini",
     "openai/gpt-4o": "openai/gpt-4o",

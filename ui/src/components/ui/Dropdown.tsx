@@ -65,7 +65,7 @@ export function Dropdown({
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
             className={cn(
-              "absolute z-50 mt-2 min-w-[12rem] overflow-hidden rounded-2xl border border-apple-border/50 bg-white/80 p-1.5 shadow-xl backdrop-blur-xl",
+              "absolute z-50 mt-2 min-w-[12rem] overflow-hidden rounded-2xl border border-apple-border/50 bg-white/95 p-1.5 shadow-2xl backdrop-blur-2xl",
               align === "right" ? "right-0" : "left-0",
               contentClassName
             )}

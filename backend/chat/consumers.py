@@ -19,6 +19,7 @@ import json
 import logging
 import time
 from collections import deque
+from urllib.parse import parse_qs
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -64,10 +65,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # Parse optional model query param (e.g. ?token=...&model=groq/llama-3.3-70b-versatile)
         query_string = self.scope.get("query_string", b"").decode()
-        qs_params = dict(
-            part.split("=", 1) for part in query_string.split("&") if "=" in part
-        )
-        requested_model = qs_params.get("model", "").strip()
+        qs_params = parse_qs(query_string)
+        requested_model = qs_params.get("model", [""])[0].strip()
         self.active_model = (
             requested_model if requested_model in ALLOWED_MODELS else _DEFAULT_MODEL
         )

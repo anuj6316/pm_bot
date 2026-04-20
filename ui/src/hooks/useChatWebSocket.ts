@@ -35,7 +35,7 @@ export function useChatWebSocket(loadConversations: () => void, selectedModelId?
           history
             .filter((m) => m.role === 'human' || m.role === 'assistant')
             .map((m): ChatMessage => ({
-              id: m.id, type: m.role === 'human' ? 'user' : 'assistant',
+              id: String(m.id), type: m.role === 'human' ? 'user' : 'assistant',
               text: m.content, isStreaming: false, timestamp: new Date(m.created_at),
             })),
         );

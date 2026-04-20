@@ -21,18 +21,6 @@ _MODEL_META: dict[str, dict] = {
         "badge": "Fast · Free tier",
         "env_var": "GROQ_API_KEY",
     },
-    "groq/llama3-8b-8192": {
-        "label": "Llama 3 8B",
-        "provider": "Groq",
-        "badge": "Fastest",
-        "env_var": "GROQ_API_KEY",
-    },
-    "groq/mixtral-8x7b-32768": {
-        "label": "Mixtral 8x7B",
-        "provider": "Groq",
-        "badge": "Long context",
-        "env_var": "GROQ_API_KEY",
-    },
     "openai/gpt-4o-mini": {
         "label": "GPT-4o mini",
         "provider": "OpenAI",

@@ -45,7 +45,7 @@ export function ModelSelector({ models, selected, onSelect, disabled, onRefresh 
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 w-72 bg-white/70 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-xl z-50 overflow-hidden">
+        <div className="absolute left-0 top-full mt-1 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
           <div className="p-2 max-h-80 overflow-y-auto">
             {Object.entries(byProvider).map(([provider, pms]) => (
               <div key={provider} className="mb-2 last:mb-0">

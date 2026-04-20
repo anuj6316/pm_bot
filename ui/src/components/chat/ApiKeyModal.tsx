@@ -49,20 +49,20 @@ export function ApiKeyModal({ isOpen, onClose, onSuccess }: ApiKeyModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm"
           />
           
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md bg-white rounded-[32px] shadow-2xl border border-apple-border/50 overflow-hidden"
+            className="relative w-full max-w-md my-8 bg-white rounded-[32px] shadow-2xl border border-apple-border/50 overflow-hidden"
           >
             <div className="p-8 border-b border-apple-border/50 bg-apple-card">
               <div className="flex items-center justify-between">

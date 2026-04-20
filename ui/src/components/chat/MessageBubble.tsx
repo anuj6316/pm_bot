@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { motion } from 'motion/react';
 import {
   Wrench, Loader2, Copy, CheckCheck,
-  ThumbsUp, ThumbsDown, RotateCcw, ChevronDown
+  ThumbsUp, ThumbsDown, RotateCcw, ChevronDown, AlertCircle
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import type { ChatMessage } from '@/src/hooks/useChatWebSocket';
@@ -77,7 +77,12 @@ export function MessageBubble({ msg, isSending }: { msg: ChatMessage, isSending:
 
   // Error logic
   if (msg.type === 'error') return (
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-xl mx-auto text-xs text-red-600 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 shadow-sm">{msg.text}</motion.div>
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex justify-start w-full mb-3">
+      <div className="max-w-xl text-xs text-red-600 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 shadow-sm flex items-start gap-2">
+        <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <p>{msg.text}</p>
+      </div>
+    </motion.div>
   );
 
   // User message
