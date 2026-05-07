@@ -1,0 +1,58 @@
+@startuml Low_Level_HITL_Approval
+!theme plain
+skinparam componentStyle uml2
+
+title Low-Level Architecture: Human-in-the-Loop (HITL) Approval Logic
+
+actor "Admin / User" as user
+participant "Django Admin / React UI" as ui
+participant "SessionViewSet\n(backend/agent/viewsets.py)" as viewset
+participant "AgentIssueSession\n(backend/agent/models.py)" as session_model
+participant "process_approved_session\n(backend/agent/tasks.py)" as task
+participant "PlaneClient\n(backend/integrations/plane/client.py)" as plane_client
+
+user -> ui : Review Session & Click "Approve"
+activate ui
+
+ui -> viewset : POST /api/sessions/{pk}/approve/
+activate viewset
+
+viewset -> viewset : get_object()
+viewset -> session_model : check status == "COMPLETED"
+viewset -> session_model : is_approved = True\nsave(update_fields=["is_approved", "updated_at"])
+
+viewset -> task : process_approved_session.delay(session.id)
+note right: Enqueues final task to Celery
+viewset --> ui : 200 OK {"status": "Session approved"}
+deactivate viewset
+deactivate ui
+
+... Celery Worker Dequeues Task ...
+
+activate task
+task -> session_model : get(id=session_id)
+task -> plane_client : list_projects()
+plane_client --> task : projects
+
+loop for p in projects
+    task -> plane_client : list_issues(p["id"])
+    plane_client --> task : issues
+    note right: Finds target_project_id matching session.plane_issue_id
+end
+
+task -> plane_client : list_labels(target_project_id)
+plane_client --> task : labels
+
+alt if label_name (triage_label) not found
+    task -> plane_client : create_label(target_project_id, label_name, color)
+    plane_client --> task : new_label_id
+end
+
+task -> plane_client : add_label_to_issue(target_project_id, session.plane_issue_id, [label_id])
+task -> plane_client : add_comment(target_project_id, session.plane_issue_id, session.error_log)
+
+task -> session_model : status = "ARCHIVED", save()
+task --> Celery : return "Post Successful"
+deactivate task
+
+@enduml
