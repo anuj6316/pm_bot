@@ -7,7 +7,8 @@ PM Bot is an AI-powered project management assistant that automates Plane issue 
 
 ```mermaid
 graph TD
-    Plane[Plane Cloud] -->|Polls/Updates| DJ[Django App]
+    UI[React Frontend UI] <-->|REST & WebSockets| DJ[Django App]
+    Plane[Plane Cloud] -->|Polls/Updates| DJ
     DJ -->|Task Dispatch| Celery[Celery Worker]
     Celery -->|Reasoning| Brain[LangGraph Brain]
     Brain -->|LLM Calls| LiteLLM[LiteLLM Proxy]
@@ -16,11 +17,12 @@ graph TD
 ```
 
 ### Data Flow
-1. **Poll:** `Celery Beat` periodically polls the `PlaneClient` for new issues.
-2. **Brain:** `LangGraph` analyzes the issue, triages it (BUG/FEATURE/QUESTION), and drafts a comment.
-3. **Persist:** The `AgentIssueSession` model records the processing state.
-4. **Approval:** A human reviews the draft via the Django Admin panel.
-5. **Post:** Upon approval, the `process_approved_session` Celery task pushes the comment to Plane.
+1. **User Interaction:** The React application (`ui/`) communicates user actions to the Django backend via REST or streaming responses via WebSockets.
+2. **Poll:** `Celery Beat` periodically polls the `PlaneClient` for new issues.
+3. **Brain:** `LangGraph` analyzes the issue, triages it (BUG/FEATURE/QUESTION), and drafts a comment.
+4. **Persist:** The `AgentIssueSession` model records the processing state.
+5. **Approval:** A human reviews the draft via the Django Admin panel or custom UI interfaces.
+6. **Post:** Upon approval, the `process_approved_session` Celery task pushes the comment to Plane.
 
 ### Key Abstractions
 * `AgentIssueSession`: The database model tracking agent state.
@@ -28,7 +30,8 @@ graph TD
 * `LangGraph Brain`: 3-node sequential reasoning pipeline (`analyze`, `triage`, `generate`).
 
 ### Directory Structure Rationale
-* `backend/`: Django project root and core application logic.
+* `ui/`: Modern React Single Page Application utilizing Vite, communicating via REST and WebSockets.
+* `backend/`: Django project root and core application logic exposing APIs and admin interfaces.
 * `deep_agent/`: Contains the stateful agent models, tasks, and the LangGraph implementation.
 * `plane_client/`: Isolated API client for Plane integration.
 * `cli/`: Command-line interface for manual agent administration.

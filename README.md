@@ -17,7 +17,8 @@ An autonomous, production-grade AI agent that triages, responds to, and manages 
 
 ```mermaid
 graph TD
-    Plane[Plane Cloud] -->|Polls/Updates| DJ[Django App]
+    UI[React Frontend UI] <-->|REST & WebSockets| DJ[Django App]
+    Plane[Plane Cloud] -->|Polls/Updates| DJ
     DJ -->|Task Dispatch| Celery[Celery Worker]
     Celery -->|Reasoning| Brain[LangGraph Brain]
     Brain -->|LLM Calls| LiteLLM[LiteLLM Proxy]
@@ -65,7 +66,8 @@ docker compose up --build -d
 This launches:
 - `postgres-django` - PostgreSQL database (port 5432)
 - `redis` - Message broker (port 6379/8005)
-- `django-web` - Django admin backend (http://localhost:8002)
+- `django-web` - Django API and admin backend (http://localhost:8002)
+- `ui` - React Frontend Application (http://localhost:5173 - if running separately)
 - `celery-worker` - Executes LLM graph operations
 - `celery-beat` - Schedules periodic polling
 
@@ -130,6 +132,7 @@ pm-bot/
 ├── deep_agent/        # LangGraph brain and Celery tasks
 ├── plane_client/      # Plane API client wrapper
 ├── docs/              # Documentation
+├── ui/                # React/Vite Frontend Application
 ├── docker-compose.yml # Service orchestration
 └── pyproject.toml     # Project dependencies
 ```
@@ -153,6 +156,7 @@ For detailed development setup, see [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
 - [Configuration](docs/CONFIGURATION.md) - Environment variables and settings
 - [Deployment](docs/DEPLOYMENT.md) - Production deployment guide
 - [Testing](docs/TESTING.md) - Testing strategies and examples
+- [Comprehensive Testing](docs/COMPREHENSIVE_TESTING.md) - Detailed edge cases and scenarios for frontend and backend
 - [Integrations](docs/INTEGRATIONS.md) - External service integrations
 
 ## Contributing
