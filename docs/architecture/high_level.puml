@@ -1,0 +1,49 @@
+@startuml High_Level_Architecture
+!theme plain
+skinparam componentStyle uml2
+
+title PM Bot - High-Level Architecture
+
+actor User as user
+actor "Admin/HITL" as admin
+
+node "Frontend (UI)" {
+    component "React / Vite App" as ui
+}
+
+node "Backend (Django App)" {
+    component "Django API & Admin" as django
+}
+
+node "Message Broker & Cache" {
+    database "Redis" as redis
+}
+
+node "Background Processing" {
+    component "Celery Worker" as celery_worker
+    component "Celery Beat" as celery_beat
+}
+
+node "Data Storage" {
+    database "PostgreSQL (pgvector)" as postgres
+}
+
+cloud "External Services" {
+    component "Plane.so API" as plane_api
+    component "LLM API (e.g. Groq)" as llm_api
+}
+
+user --> ui : Interacts via Web UI
+admin --> django : Reviews/Approves via Admin
+
+ui <--> django : REST & WebSockets
+django --> postgres : Read/Write Data
+django --> redis : Queue Tasks
+
+celery_beat --> redis : Enqueue Scheduled Tasks
+redis <-- celery_worker : Dequeue Tasks
+celery_worker --> postgres : Read/Write State
+celery_worker <--> plane_api : Fetch/Update Issues
+celery_worker <--> llm_api : Reason / Triage
+
+@enduml

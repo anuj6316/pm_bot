@@ -1,0 +1,50 @@
+@startuml Medium_Level_Architecture
+!theme plain
+skinparam componentStyle uml2
+
+title PM Bot - Medium-Level Architecture (Containers/Components)
+
+package "Frontend Container (UI)" {
+    [React Application] as react_app
+    [Vite Server] as vite
+}
+
+package "Backend Container (Django)" {
+    package "Apps" {
+        [Agent App\n(models, views)] as agent_app
+        [Chat App\n(websockets)] as chat_app
+        [Integrations App\n(Plane, Auth)] as integrations_app
+        [Authentication App] as auth_app
+    }
+    [Django Admin] as django_admin
+}
+
+package "Worker Container (Celery)" {
+    [Task Dispatcher] as dispatcher
+    package "LangGraph Brain" {
+        [State Graph Definition] as graph
+        [Execution Nodes] as nodes
+        [Prompt Templates] as prompts
+    }
+}
+
+database "PostgreSQL" as db {
+    [AgentIssueSession] as session_table
+    [User Data] as user_table
+}
+
+queue "Redis" as redis
+
+react_app <--> chat_app : WebSockets
+react_app --> agent_app : REST API
+django_admin --> session_table : Update State (HITL)
+
+agent_app --> redis : enqueue task
+integrations_app --> redis : enqueue poll task
+
+redis <-- dispatcher : consume task
+dispatcher --> graph : invoke processing
+graph --> nodes : execute step
+nodes --> session_table : persist state
+
+@enduml

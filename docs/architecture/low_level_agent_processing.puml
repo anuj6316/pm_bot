@@ -1,0 +1,64 @@
+@startuml Low_Level_Agent_Processing
+!theme plain
+skinparam componentStyle uml2
+
+title Low-Level Architecture: Agent Processing Logic
+
+participant "Celery Beat" as beat
+participant "poll_plane_issues_task\n(backend/agent/tasks.py)" as poll_task
+participant "AgentIssueSession\n(backend/agent/models.py)" as session_model
+participant "run_brain\n(backend/agent/brain/graph.py)" as run_brain
+participant "StateGraph (LangGraph)\n(backend/agent/brain/graph.py)" as state_graph
+participant "analyze_issue\n(backend/agent/brain/nodes.py)" as analyze_node
+participant "triage_issue\n(backend/agent/brain/nodes.py)" as triage_node
+participant "generate_response\n(backend/agent/brain/nodes.py)" as generate_node
+
+note over run_brain: AgentState TypedDict:\n- issue_content\n- analysis\n- category\n- draft_response\n- error
+
+beat -> poll_task : trigger periodic task
+activate poll_task
+
+poll_task -> session_model : get_or_create(plane_issue_id=issue_id)
+session_model --> poll_task : session, created
+
+alt if created
+    poll_task -> session_model : status="PROCESSING", save()
+    poll_task -> run_brain : run_brain(full_content)
+    activate run_brain
+
+    run_brain -> state_graph : invoke(initial_state)
+    activate state_graph
+
+    state_graph -> analyze_node : execute(state)
+    activate analyze_node
+    analyze_node --> state_graph : {"analysis": "..."}
+    deactivate analyze_node
+
+    state_graph -> triage_node : execute(state)
+    activate triage_node
+    triage_node --> state_graph : {"category": "BUG/FEATURE/QUESTION"}
+    deactivate triage_node
+
+    state_graph -> generate_node : execute(state)
+    activate generate_node
+    generate_node --> state_graph : {"draft_response": "..."}
+    deactivate generate_node
+
+    state_graph --> run_brain : final_state
+    deactivate state_graph
+
+    run_brain --> poll_task : result_dict
+    deactivate run_brain
+
+    alt if result.get("error")
+        poll_task -> session_model : status="FAILED", error_log=result["error"], save()
+    else success
+        poll_task -> session_model : status="COMPLETED"\n triage_label=result["category"]\n error_log=result["draft_response"], save()
+    end
+else not created
+    poll_task -> session_model : save() (no-op)
+end
+
+deactivate poll_task
+
+@enduml

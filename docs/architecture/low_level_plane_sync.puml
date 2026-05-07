@@ -1,0 +1,48 @@
+@startuml Low_Level_Plane_Sync
+!theme plain
+skinparam componentStyle uml2
+
+title Low-Level Architecture: Plane Sync Logic
+
+participant "Celery Beat" as beat
+participant "poll_plane_issues_task\n(backend/agent/tasks.py)" as poll_task
+participant "PlaneClient\n(backend/integrations/plane/client.py)" as plane_client
+participant "requests.Session\n(python requests)" as session
+participant "AgentIssueSession\n(backend/agent/models.py)" as session_model
+
+beat -> poll_task : trigger polling
+activate poll_task
+
+poll_task -> plane_client : client = PlaneClient()
+activate plane_client
+plane_client -> plane_client : __init__\n(load ENV vars)
+
+poll_task -> plane_client : list_projects()
+plane_client -> session : request("GET", "/workspaces/.../projects/")
+session --> plane_client : response.json()
+plane_client --> poll_task : projects (List/Dict)
+
+loop for project in projects
+    poll_task -> plane_client : list_issues(project_id)
+    plane_client -> session : request("GET", ".../projects/{project_id}/issues/")
+    session --> plane_client : response.json()
+    plane_client --> poll_task : issues (List/Dict)
+
+    loop for issue in issues
+        poll_task -> session_model : get_or_create(plane_issue_id=issue["id"])
+        session_model --> poll_task : session, created
+
+        alt if created
+            note right of poll_task: Triggers brain reasoning logic \n(See Low_Level_Agent_Processing.puml)
+            poll_task -> session_model : status="PROCESSING", save()
+        else
+            poll_task -> session_model : save() (no-op)
+        end
+    end
+end
+
+deactivate plane_client
+poll_task --> beat : return "Polling Complete"
+deactivate poll_task
+
+@enduml
