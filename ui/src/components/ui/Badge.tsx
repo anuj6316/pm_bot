@@ -2,23 +2,21 @@ import * as React from "react";
 import { cn } from "@/src/lib/utils";
 
 export interface BadgeProps extends React.ComponentProps<"div"> {
-  variant?: "default" | "secondary" | "outline" | "destructive" | "success" | "warning";
+  variant?: "default" | "outline" | "translucent";
   className?: string;
   children?: React.ReactNode;
 }
 
+// Adapting the `configurator-option-chip` aesthetic for Badges
 function Badge({ className, variant = "default", ...props }: BadgeProps) {
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-apple-blue focus:ring-offset-2",
+        "inline-flex items-center rounded-pill px-[12px] py-[6px] text-caption transition-colors",
         {
-          "bg-apple-text text-white": variant === "default",
-          "bg-black/5 text-apple-text": variant === "secondary",
-          "text-apple-text border border-apple-border": variant === "outline",
-          "bg-red-500/10 text-red-600": variant === "destructive",
-          "bg-green-500/10 text-green-600": variant === "success",
-          "bg-orange-500/10 text-orange-600": variant === "warning",
+          "bg-[var(--color-ink)] text-[var(--color-on-dark)]": variant === "default",
+          "bg-[var(--color-canvas)] text-[var(--color-ink)] border border-[var(--color-hairline)]": variant === "outline",
+          "bg-[var(--color-surface-chip-translucent)] text-[var(--color-ink)] backdrop-blur-md": variant === "translucent",
         },
         className
       )}
