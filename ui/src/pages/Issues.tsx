@@ -5,6 +5,10 @@ import {
   Plus, GitBranch, X, Check, FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { Button } from '@/src/components/ui/Button';
+import { Badge } from '@/src/components/ui/Badge';
+import { Card, CardContent } from '@/src/components/ui/Card';
+import { Input } from '@/src/components/ui/Input';
 import {
   fetchIssuesByProject,
   createIssue,
@@ -17,31 +21,28 @@ import { useProject } from '@/src/contexts/ProjectContext';
 // ─── Priority helpers ─────────────────────────────────────────────────────────
 
 const PRIORITY_CONFIG: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
-  urgent: { label: 'Urgent', icon: <AlertCircle className="w-3 h-3" />, cls: 'text-red-600 bg-red-50 border-red-200' },
-  high:   { label: 'High',   icon: <ArrowUp className="w-3 h-3" />,    cls: 'text-orange-600 bg-orange-50 border-orange-200' },
-  medium: { label: 'Medium', icon: <Minus className="w-3 h-3" />,      cls: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
-  low:    { label: 'Low',    icon: <ArrowDown className="w-3 h-3" />,  cls: 'text-blue-600 bg-blue-50 border-blue-200' },
-  none:   { label: 'None',   icon: <Circle className="w-3 h-3" />,     cls: 'text-gray-500 bg-gray-50 border-gray-200' },
+  urgent: { label: 'Urgent', icon: <AlertCircle className="w-3 h-3" />, cls: 'text-red-500' },
+  high:   { label: 'High',   icon: <ArrowUp className="w-3 h-3" />,    cls: 'text-orange-500' },
+  medium: { label: 'Medium', icon: <Minus className="w-3 h-3" />,      cls: 'text-yellow-500' },
+  low:    { label: 'Low',    icon: <ArrowDown className="w-3 h-3" />,  cls: 'text-blue-500' },
+  none:   { label: 'None',   icon: <Circle className="w-3 h-3" />,     cls: 'text-[var(--color-ink-muted-48)]' },
 };
 
 const PRIORITY_OPTIONS = ['none', 'low', 'medium', 'high', 'urgent'] as const;
 
 const STATE_GROUP_COLOR: Record<string, string> = {
-  backlog:     'bg-gray-400',
-  unstarted:   'bg-gray-400',
-  started:     'bg-yellow-400',
-  in_progress: 'bg-blue-400',
+  backlog:     'bg-[var(--color-ink-muted-48)]',
+  unstarted:   'bg-[var(--color-ink-muted-48)]',
+  started:     'bg-yellow-500',
+  in_progress: 'bg-[var(--color-primary-on-dark)]',
   completed:   'bg-green-500',
-  cancelled:   'bg-red-400',
+  cancelled:   'bg-red-500',
 };
 
 function PriorityBadge({ priority }: { priority: string }) {
   const cfg = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.none;
   return (
-    <span className={cn(
-      'inline-flex items-center gap-1 text-[10px] font-medium border rounded px-1.5 py-0.5 flex-shrink-0',
-      cfg.cls,
-    )}>
+    <span className={cn('inline-flex items-center gap-1 text-fine-print flex-shrink-0', cfg.cls)}>
       {cfg.icon}{cfg.label}
     </span>
   );
@@ -50,8 +51,8 @@ function PriorityBadge({ priority }: { priority: string }) {
 function StateDot({ group }: { group: string }) {
   return (
     <span className={cn(
-      'w-2 h-2 rounded-full flex-shrink-0',
-      STATE_GROUP_COLOR[group?.toLowerCase()] ?? 'bg-gray-300',
+      'w-[8px] h-[8px] rounded-full flex-shrink-0',
+      STATE_GROUP_COLOR[group?.toLowerCase()] ?? 'bg-[var(--color-ink-muted-48)]',
     )} />
   );
 }
@@ -89,40 +90,36 @@ function SubtaskForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2 px-4 py-3 bg-blue-50/60 border-t border-blue-200/50">
-      <div className="flex items-center gap-2">
-        <GitBranch className="w-3.5 h-3.5 text-apple-blue flex-shrink-0" />
-        <span className="text-xs font-semibold text-apple-blue">New Sub-task</span>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-[8px] px-[24px] py-[16px] bg-[var(--color-canvas-parchment)] border-b border-[var(--color-divider-soft)]">
+      <div className="flex items-center gap-[8px]">
+        <GitBranch className="w-[14px] h-[14px] text-[var(--color-primary)] flex-shrink-0" />
+        <span className="text-caption-strong text-[var(--color-primary)]">New Sub-task</span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-[8px]">
         <input
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Sub-task title…"
-          className="flex-1 text-sm px-3 py-1.5 border border-apple-border/60 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-apple-blue/30 focus:border-apple-blue"
+          className="flex-1 text-body-default px-[16px] py-[8px] border border-[var(--color-hairline)] rounded-sm bg-[var(--color-canvas)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary-focus)]"
         />
         <select
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
-          className="text-xs px-2 py-1.5 border border-apple-border/60 rounded-lg bg-white focus:outline-none cursor-pointer"
+          className="text-caption px-[12px] py-[8px] border border-[var(--color-hairline)] rounded-sm bg-[var(--color-canvas)] focus:outline-none cursor-pointer"
         >
           {PRIORITY_OPTIONS.map((p) => (
             <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
           ))}
         </select>
-        <button
-          type="submit"
-          disabled={saving || !name.trim()}
-          className="p-1.5 rounded-lg bg-apple-blue text-white hover:bg-apple-blue/80 disabled:opacity-50 transition-colors"
-        >
-          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-        </button>
-        <button type="button" onClick={onCancel} className="p-1.5 rounded-lg text-apple-text-muted hover:bg-black/10 transition-colors">
-          <X className="w-3.5 h-3.5" />
+        <Button type="submit" variant="primary" disabled={saving || !name.trim()} className="px-[16px] py-[8px] h-auto text-caption rounded-sm">
+          {saving ? <Loader2 className="w-[14px] h-[14px] animate-spin" /> : <Check className="w-[14px] h-[14px]" />}
+        </Button>
+        <button type="button" onClick={onCancel} className="p-[8px] rounded-sm text-[var(--color-ink-muted-48)] hover:bg-[var(--color-divider-soft)] transition-colors">
+          <X className="w-[14px] h-[14px]" />
         </button>
       </div>
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-caption text-red-500">{error}</p>}
     </form>
   );
 }
@@ -137,30 +134,30 @@ function IssueRow({
   issue: PlaneIssue & { subtasks?: PlaneIssue[] };
   projectId: string;
   onSubtaskCreated: (subtask: PlaneIssue, parentId: string) => void;
-  key?: React.Key;
 }) {
   const [showSubtaskForm, setShowSubtaskForm] = useState(false);
 
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-black/[0.02] transition-colors border-b border-apple-border/30 last:border-0 group">
+      <div className="flex items-center gap-[16px] px-[24px] py-[16px] hover:bg-[var(--color-canvas-parchment)] transition-colors border-b border-[var(--color-divider-soft)] last:border-0 group">
         <StateDot group={issue.state_group} />
-        <span className="text-[10px] font-mono text-apple-text-muted w-16 flex-shrink-0">
+        <span className="text-caption font-mono text-[var(--color-ink-muted-48)] w-[64px] flex-shrink-0">
           {issue.project_identifier}-{issue.sequence_id ?? '?'}
         </span>
-        <p className="flex-1 text-sm font-medium text-apple-text truncate">{issue.name}</p>
-        <span className="text-[11px] text-apple-text-muted hidden md:block w-24 flex-shrink-0 text-right truncate">{issue.state}</span>
-        <PriorityBadge priority={issue.priority} />
+        <p className="flex-1 text-body-strong text-[var(--color-ink)] truncate">{issue.name}</p>
+        <span className="text-caption text-[var(--color-body-muted)] hidden md:block w-[96px] flex-shrink-0 text-right truncate">{issue.state}</span>
+        <div className="w-[80px] flex justify-end"><PriorityBadge priority={issue.priority} /></div>
+
         {/* Add subtask button */}
         <button
           onClick={() => setShowSubtaskForm(!showSubtaskForm)}
           title="Add sub-task"
           className={cn(
-            'p-1 rounded opacity-0 group-hover:opacity-100 transition-all flex-shrink-0',
-            showSubtaskForm ? 'opacity-100 bg-apple-blue/10 text-apple-blue' : 'text-apple-text-muted hover:bg-black/8',
+            'p-[6px] rounded-full transition-all flex-shrink-0',
+            showSubtaskForm ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]' : 'text-[var(--color-ink-muted-48)] opacity-0 group-hover:opacity-100 hover:bg-[var(--color-divider-soft)]',
           )}
         >
-          <GitBranch className="w-3.5 h-3.5" />
+          <GitBranch className="w-[14px] h-[14px]" />
         </button>
       </div>
 
@@ -179,13 +176,13 @@ function IssueRow({
 
       {/* Existing subtasks */}
       {(issue.subtasks ?? []).map((sub) => (
-        <div key={sub.id} className="flex items-center gap-3 pl-10 pr-4 py-2 bg-black/[0.012] border-b border-apple-border/20 last:border-0">
-          <GitBranch className="w-3 h-3 text-apple-text-muted flex-shrink-0" />
+        <div key={sub.id} className="flex items-center gap-[12px] pl-[64px] pr-[24px] py-[12px] bg-[var(--color-canvas-parchment)] border-b border-[var(--color-divider-soft)] last:border-0">
+          <GitBranch className="w-[12px] h-[12px] text-[var(--color-ink-muted-48)] flex-shrink-0" />
           <StateDot group={sub.state_group} />
-          <span className="text-[9px] font-mono text-apple-text-muted w-16 flex-shrink-0">
+          <span className="text-fine-print font-mono text-[var(--color-ink-muted-48)] w-[64px] flex-shrink-0">
             {sub.project_identifier}-{sub.sequence_id ?? '?'}
           </span>
-          <p className="flex-1 text-xs text-apple-text truncate">{sub.name}</p>
+          <p className="flex-1 text-caption text-[var(--color-ink)] truncate">{sub.name}</p>
           <PriorityBadge priority={sub.priority} />
         </div>
       ))}
@@ -224,40 +221,36 @@ function NewIssueForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2 px-4 py-3 bg-green-50/50 border-t border-green-200/50">
-      <div className="flex items-center gap-2">
-        <Plus className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-        <span className="text-xs font-semibold text-green-700">New Issue</span>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-[8px] px-[24px] py-[16px] bg-[var(--color-surface-pearl)] border-b border-[var(--color-divider-soft)]">
+      <div className="flex items-center gap-[8px]">
+        <Plus className="w-[14px] h-[14px] text-[var(--color-primary)] flex-shrink-0" />
+        <span className="text-caption-strong text-[var(--color-primary)]">New Issue</span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-[8px]">
         <input
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Issue title…"
-          className="flex-1 text-sm px-3 py-1.5 border border-apple-border/60 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-400/30 focus:border-green-500"
+          className="flex-1 text-body-default px-[16px] py-[8px] border border-[var(--color-hairline)] rounded-sm bg-[var(--color-canvas)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary-focus)]"
         />
         <select
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
-          className="text-xs px-2 py-1.5 border border-apple-border/60 rounded-lg bg-white focus:outline-none cursor-pointer"
+          className="text-caption px-[12px] py-[8px] border border-[var(--color-hairline)] rounded-sm bg-[var(--color-canvas)] focus:outline-none cursor-pointer"
         >
           {PRIORITY_OPTIONS.map((p) => (
             <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
           ))}
         </select>
-        <button
-          type="submit"
-          disabled={saving || !name.trim()}
-          className="p-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
-        >
-          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-        </button>
-        <button type="button" onClick={onCancel} className="p-1.5 rounded-lg text-apple-text-muted hover:bg-black/10 transition-colors">
-          <X className="w-3.5 h-3.5" />
+        <Button type="submit" variant="primary" disabled={saving || !name.trim()} className="px-[16px] py-[8px] h-auto text-caption rounded-sm">
+          {saving ? <Loader2 className="w-[14px] h-[14px] animate-spin" /> : <Check className="w-[14px] h-[14px]" />}
+        </Button>
+        <button type="button" onClick={onCancel} className="p-[8px] rounded-sm text-[var(--color-ink-muted-48)] hover:bg-[var(--color-divider-soft)] transition-colors">
+          <X className="w-[14px] h-[14px]" />
         </button>
       </div>
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-caption text-red-500">{error}</p>}
     </form>
   );
 }
@@ -272,7 +265,6 @@ function ProjectSection({ group, onRefresh }: { group: EnrichedGroup; onRefresh:
   const [showNewForm, setShowNewForm] = useState(false);
   const [localIssues, setLocalIssues] = useState<EnrichedIssue[]>(group.issues);
 
-  // keep in sync if parent data refreshes
   useEffect(() => setLocalIssues(group.issues), [group.issues]);
 
   const handleNewIssue = (newIssue: PlaneIssue) => {
@@ -297,58 +289,32 @@ function ProjectSection({ group, onRefresh }: { group: EnrichedGroup; onRefresh:
   };
 
   return (
-    <div className="border border-apple-border/50 rounded-xl overflow-hidden shadow-sm">
+    <Card className="overflow-hidden mb-[24px]">
       {/* Header */}
-      <div className="flex items-center bg-white hover:bg-black/[0.015] transition-colors">
+      <div className="flex items-center bg-[var(--color-surface-pearl)] hover:bg-[var(--color-canvas-parchment)] transition-colors border-b border-[var(--color-divider-soft)]">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-3 px-4 py-3 flex-1 text-left"
+          className="flex items-center gap-[12px] px-[24px] py-[16px] flex-1 text-left"
         >
-          {expanded ? <ChevronDown className="w-4 h-4 text-apple-text-muted" /> : <ChevronRight className="w-4 h-4 text-apple-text-muted" />}
-          <Folder className="w-4 h-4 text-apple-blue flex-shrink-0" />
-          <span className="font-semibold text-sm text-apple-text">{group.project.name}</span>
-          <span className="text-xs font-mono text-apple-text-muted bg-black/5 rounded-full px-2 py-0.5 ml-auto">
-            {localIssues.length} issue{localIssues.length !== 1 ? 's' : ''}
+          {expanded ? <ChevronDown className="w-[16px] h-[16px] text-[var(--color-ink-muted-48)]" /> : <ChevronRight className="w-[16px] h-[16px] text-[var(--color-ink-muted-48)]" />}
+          <Folder className="w-[16px] h-[16px] text-[var(--color-primary)] flex-shrink-0" />
+          <span className="text-body-strong text-[var(--color-ink)]">{group.project.name}</span>
+          <span className="text-caption font-mono text-[var(--color-ink-muted-48)] ml-auto">
+            {localIssues.length}
           </span>
         </button>
-        {/* Add issue button always visible */}
         <button
           onClick={() => { setExpanded(true); setShowNewForm(true); }}
           title="Add issue to this project"
-          className="flex items-center gap-1.5 px-3 py-3 text-apple-text-muted hover:text-green-600 hover:bg-green-50 transition-colors text-xs font-medium border-l border-apple-border/30"
+          className="flex items-center gap-[6px] px-[24px] py-[16px] text-[var(--color-ink-muted-80)] hover:text-[var(--color-primary)] hover:bg-[var(--color-divider-soft)] transition-colors text-caption-strong border-l border-[var(--color-divider-soft)]"
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus className="w-[14px] h-[14px]" />
           Add
         </button>
       </div>
 
       {expanded && (
-        <div className="border-t border-apple-border/40 bg-white/50">
-          {/* Column headers */}
-          <div className="flex items-center gap-3 px-4 py-1.5 bg-black/[0.015] border-b border-apple-border/30">
-            <span className="w-2 h-2 flex-shrink-0" />
-            <span className="text-[10px] font-semibold text-apple-text-muted uppercase tracking-wide w-16 flex-shrink-0">ID</span>
-            <span className="flex-1 text-[10px] font-semibold text-apple-text-muted uppercase tracking-wide">Title</span>
-            <span className="hidden md:block w-24 text-right text-[10px] font-semibold text-apple-text-muted uppercase tracking-wide flex-shrink-0">State</span>
-            <span className="text-[10px] font-semibold text-apple-text-muted uppercase tracking-wide flex-shrink-0">Priority</span>
-            <span className="w-6 flex-shrink-0" />{/* space for sub-task btn */}
-          </div>
-
-          {localIssues.length === 0 ? (
-            <div className="px-4 py-6 text-center text-apple-text-muted text-sm">
-              No issues in this project
-            </div>
-          ) : (
-            localIssues.map((issue) => (
-              <IssueRow
-                key={issue.id}
-                issue={issue}
-                projectId={group.project.id}
-                onSubtaskCreated={handleSubtaskCreated}
-              />
-            ))
-          )}
-
+        <div className="bg-[var(--color-canvas)]">
           {showNewForm && (
             <NewIssueForm
               projectId={group.project.id}
@@ -356,9 +322,26 @@ function ProjectSection({ group, onRefresh }: { group: EnrichedGroup; onRefresh:
               onCancel={() => setShowNewForm(false)}
             />
           )}
+
+          {localIssues.length === 0 ? (
+            <div className="px-[24px] py-[48px] text-center text-body-default text-[var(--color-body-muted)]">
+              No issues in this project
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {localIssues.map((issue) => (
+                <IssueRow
+                  key={issue.id}
+                  issue={issue}
+                  projectId={group.project.id}
+                  onSubtaskCreated={handleSubtaskCreated}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -386,7 +369,6 @@ export function Issues() {
 
   useEffect(() => { loadIssues(); }, [loadIssues]);
 
-  // Filter groups by selected project
   const filteredGroups = React.useMemo(() => {
     let result = search.trim()
       ? groups
@@ -401,7 +383,6 @@ export function Issues() {
           .filter((g) => g.issues.length > 0)
       : groups;
 
-    // Filter by selected project
     if (selectedProject) {
       result = result.filter((g) => g.project.id === selectedProject.id);
     }
@@ -409,76 +390,58 @@ export function Issues() {
     return result;
   }, [groups, search, selectedProject]);
 
-  const totalIssues = filteredGroups.reduce((sum, g) => sum + g.issues.length, 0);
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col min-h-full bg-[var(--color-canvas-parchment)]">
+
+      {/* Light Hero Header */}
+      <section className="bg-[var(--color-canvas)] border-b border-[var(--color-divider-soft)] px-[32px] py-[48px] flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Issues</h1>
-          <p className="text-apple-text-muted mt-1">
-            {loading ? 'Loading…' : (
-              selectedProject
-                ? `${totalIssues} issue${totalIssues !== 1 ? 's' : ''} in ${selectedProject.name}`
-                : `${totalIssues} issues across ${filteredGroups.length} project${filteredGroups.length !== 1 ? 's' : ''}`
-            )}
+          <h1 className="text-display-lg text-[var(--color-ink)]">Issues.</h1>
+          <p className="text-lead mt-[8px] text-[var(--color-ink-muted-80)]">
+             Manage and track your project tasks.
           </p>
         </div>
-        <button
-          onClick={loadIssues}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-apple-border/60 rounded-xl hover:bg-black/5 transition-colors disabled:opacity-50"
-        >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          Refresh
-        </button>
-      </div>
-
-      {/* Search */}
-      <input
-        type="text"
-        placeholder={selectedProject ? `Search issues in ${selectedProject.name}…` : 'Search issues or projects…'}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full px-4 py-2.5 text-sm border border-apple-border/60 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-apple-blue/30 focus:border-apple-blue transition"
-      />
-
-      {error && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</div>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-7 h-7 animate-spin text-apple-text-muted" />
+        <div className="flex flex-col items-end gap-[16px]">
+          <Button onClick={loadIssues} disabled={loading} variant="secondary-pill">
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </Button>
         </div>
-      ) : filteredGroups.length === 0 ? (
-        <div className="border border-apple-border/40 rounded-xl p-12 text-center">
-          {availableProjects.length === 0 ? (
-            <div className="space-y-2">
-              <FolderOpen className="w-10 h-10 mx-auto text-apple-text-muted" />
-              <p className="text-apple-text-muted text-sm">No projects available</p>
-              <p className="text-apple-text-muted/60 text-xs">Contact your administrator to get project access</p>
-            </div>
-          ) : search ? (
-            <p className="text-apple-text-muted text-sm">No issues match your search.</p>
-          ) : (
-            <div className="space-y-2">
-              <Folder className="w-10 h-10 mx-auto text-apple-text-muted" />
-              <p className="text-apple-text-muted text-sm">No issues found</p>
-              {selectedProject && (
-                <p className="text-apple-text-muted/60 text-xs">in {selectedProject.name}</p>
-              )}
+      </section>
+
+      {/* Issues Grid/Content */}
+      <section className="flex-1 px-[32px] py-[48px] flex flex-col items-center">
+        <div className="w-full max-w-5xl">
+          <div className="mb-[32px]">
+            <Input
+              type="text"
+              placeholder={selectedProject ? `Search issues in ${selectedProject.name}…` : 'Search issues or projects…'}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          {error && (
+            <div className="mb-[24px] text-body-default text-red-500 bg-red-50 px-[24px] py-[16px] rounded-lg border border-red-200">
+              {error}
             </div>
           )}
+
+          {loading ? (
+             <div className="py-[64px] flex justify-center text-[var(--color-body-muted)]">Loading issues...</div>
+          ) : filteredGroups.length === 0 ? (
+            <Card className="py-[80px] text-center">
+               <FolderOpen className="w-[48px] h-[48px] mx-auto text-[var(--color-ink-muted-48)] mb-[16px]" />
+               <p className="text-lead text-[var(--color-ink-muted-80)]">No issues found</p>
+            </Card>
+          ) : (
+             <div className="flex flex-col gap-[24px]">
+               {filteredGroups.map((group) => (
+                 <ProjectSection key={group.project.id} group={group} onRefresh={loadIssues} />
+               ))}
+             </div>
+          )}
         </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredGroups.map((group) => (
-            <ProjectSection key={group.project.id} group={group} onRefresh={loadIssues} />
-          ))}
-        </div>
-      )}
+      </section>
     </div>
   );
 }

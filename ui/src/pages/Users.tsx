@@ -4,6 +4,10 @@ import { cn } from '@/src/lib/utils';
 import { api } from '@/src/lib/api';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Button } from '@/src/components/ui/Button';
+import { Card, CardContent } from '@/src/components/ui/Card';
+import { Input } from '@/src/components/ui/Input';
+import { Badge } from '@/src/components/ui/Badge';
 
 interface UserData {
   id: number;
@@ -58,7 +62,7 @@ export function Users() {
 
   const projectMap = (Array.isArray(projects) ? projects : []).reduce((acc, p) => ({ ...acc, [p.id.toLowerCase()]: p.name }), {} as Record<string, string>);
 
-  const canManage = currentUser?.role === 'admin' || currentUser?.role === 'consultant' || currentUser?.is_superuser;
+  const canManage = (currentUser as any)?.role === 'admin' || (currentUser as any)?.role === 'consultant' || (currentUser as any)?.is_superuser;
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,230 +101,144 @@ export function Users() {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="flex flex-col min-h-full bg-[var(--color-canvas-parchment)]">
+      {/* Light Hero Header */}
+      <section className="bg-[var(--color-canvas)] border-b border-[var(--color-divider-soft)] px-[32px] py-[48px] flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-apple-text">Team</h1>
-          <p className="text-apple-text-muted mt-1">
-            {canManage ? 'Manage team roles and project access.' : 'View your project colleagues and team members.'}
+          <h1 className="text-display-lg text-[var(--color-ink)]">Team.</h1>
+          <p className="text-lead mt-[8px] text-[var(--color-ink-muted-80)]">
+             {canManage ? 'Manage team roles and project access.' : 'View your project colleagues.'}
           </p>
         </div>
-        {canManage && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center justify-center gap-2 bg-apple-blue hover:bg-apple-blue-hover text-white px-5 py-2.5 rounded-full font-medium transition-all shadow-sm active:scale-95"
-          >
-            <UserPlus className="w-4 h-4" />
-            Add New User
-          </button>
-        )}
-      </div>
+        <div className="flex flex-col items-end gap-[16px]">
+          {canManage && (
+            <Button onClick={() => setIsModalOpen(true)} variant="primary">
+              Add New User
+            </Button>
+          )}
+        </div>
+      </section>
 
-      {/* Stats/Summary Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { icon: UsersIcon, label: 'Total Users', value: users.length, color: 'text-blue-500' },
-          { icon: Shield, label: 'Admins', value: users.filter(u => u.role === 'admin').length, color: 'text-purple-500' },
-          { icon: Globe, label: 'Projects Covered', value: new Set(users.flatMap(u => u.projects)).size, color: 'text-green-500' },
-        ].map((stat, i) => (
-          <div key={i} className="bg-apple-card border border-apple-border/50 p-6 rounded-3xl backdrop-blur-sm">
-            <div className="flex items-center gap-4">
-              <div className={cn("p-3 rounded-2xl bg-white/50", stat.color)}>
-                <stat.icon className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-apple-text-muted">{stat.label}</p>
-                <p className="text-2xl font-bold text-apple-text">{stat.value}</p>
-              </div>
-            </div>
+      {/* Main Content Area */}
+      <section className="flex-1 px-[32px] py-[48px] flex flex-col items-center">
+        <div className="w-full max-w-5xl">
+
+          <div className="mb-[32px]">
+            <Input
+              type="text"
+              placeholder="Search users by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-        ))}
-      </div>
 
-      {/* Search & List */}
-      <div className="bg-apple-card border border-apple-border/50 rounded-3xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-apple-border/50 bg-white/30 backdrop-blur-md flex items-center gap-3">
-          <Search className="w-4 h-4 text-apple-text-muted" />
-          <input
-            type="text"
-            placeholder="Search users by name or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm placeholder:text-apple-text-muted"
-          />
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-black/5">
-                <th className="px-6 py-4 text-xs font-semibold text-apple-text-muted uppercase tracking-wider">User</th>
-                <th className="px-6 py-4 text-xs font-semibold text-apple-text-muted uppercase tracking-wider">Role</th>
-                <th className="px-6 py-4 text-xs font-semibold text-apple-text-muted uppercase tracking-wider">Project Access</th>
-                {canManage && <th className="px-6 py-4 text-xs font-semibold text-apple-text-muted uppercase tracking-wider text-right">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-apple-border/30">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-apple-text-muted">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-6 h-6 border-2 border-apple-blue border-t-transparent rounded-full animate-spin" />
-                      <span>Loading users...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-apple-text-muted">
-                    No users found matching your search.
-                  </td>
-                </tr>
-              ) : (
-                filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-black/[0.02] transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-apple-blue/10 flex items-center justify-center font-bold text-apple-blue">
-                          {u.username?.charAt(0).toUpperCase()}
+          <Card>
+             <CardContent className="p-0">
+                <div className="divide-y divide-[var(--color-divider-soft)]">
+                  {isLoading ? (
+                    <div className="py-[64px] text-center text-[var(--color-body-muted)]">Loading users...</div>
+                  ) : filteredUsers.length === 0 ? (
+                    <div className="py-[64px] text-center text-[var(--color-body-muted)]">No users found.</div>
+                  ) : (
+                    filteredUsers.map((u) => (
+                      <div key={u.id} className="flex items-center justify-between p-[24px] hover:bg-[var(--color-canvas-parchment)] transition-colors group">
+                        <div className="flex items-center gap-[16px]">
+                          <div className="w-[48px] h-[48px] rounded-full bg-[var(--color-surface-chip-translucent)] flex items-center justify-center text-display-md text-[var(--color-ink)] leading-none">
+                             {u.username?.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-body-strong text-[var(--color-ink)]">{u.username}</p>
+                            <p className="text-caption text-[var(--color-body-muted)]">{u.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-apple-text">{u.username}</p>
-                          <p className="text-xs text-apple-text-muted">{u.email}</p>
+
+                        <div className="flex items-center gap-[16px]">
+                          <Badge variant="outline">User</Badge>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={cn(
-                        "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border",
-                        u.role === 'admin' ? "bg-purple-100/50 text-purple-600 border-purple-200" :
-                          u.role === 'consultant' ? "bg-blue-100/50 text-blue-600 border-blue-200" :
-                            "bg-green-100/50 text-green-600 border-green-200"
-                      )}>
-                        <Shield className="w-3 h-3" />
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1.5 max-w-[350px]">
-                        {u.projects.length > 0 ? (
-                          u.projects.map(pid => (
-                            <span key={pid} className="px-2.5 py-1 rounded-lg bg-apple-blue/5 text-[10px] font-medium text-apple-blue border border-apple-blue/10">
-                              {projectMap[pid.toLowerCase()] || pid.slice(0, 8)}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-xs text-apple-text-muted italic">Global Access</span>
-                        )}
-                      </div>
-                    </td>
-                    {canManage && (
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="p-2 text-apple-text-muted hover:text-apple-blue rounded-lg hover:bg-black/5">
-                            <Key className="w-4 h-4" />
-                          </button>
-                          <button className="p-2 text-apple-text-muted hover:text-red-500 rounded-lg hover:bg-black/5">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                    ))
+                  )}
+                </div>
+             </CardContent>
+          </Card>
         </div>
-      </div>
+      </section>
 
       {/* Creation Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/10 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
-          <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl border border-apple-border/50 overflow-hidden flex flex-col">
-            <div className="p-8 border-b border-apple-border/50 bg-apple-card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-apple-text">Add New Team Member</h2>
-                  <p className="text-sm text-apple-text-muted mt-1">Configure their account and role.</p>
-                </div>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-black/5 rounded-full text-apple-text-muted">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-surface-black)]/80 backdrop-blur-md p-4">
+          <div className="bg-[var(--color-canvas)] rounded-lg w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-product-elevation">
+            <div className="px-[24px] py-[24px] border-b border-[var(--color-divider-soft)] flex items-center justify-between">
+               <h2 className="text-display-md text-[var(--color-ink)]">Add Team Member</h2>
+               <button onClick={() => setIsModalOpen(false)} className="w-[32px] h-[32px] flex items-center justify-center rounded-full bg-[var(--color-surface-chip-translucent)] hover:bg-[var(--color-divider-soft)] transition-colors">
+                 <X className="w-[16px] h-[16px] text-[var(--color-ink)]" />
+               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="p-8 space-y-6 overflow-y-auto max-h-[70vh]">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-apple-text ml-1">Username</label>
-                  <input
+            <form onSubmit={handleCreateUser} className="p-[24px] space-y-[24px] overflow-y-auto">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[16px]">
+                <div className="space-y-[8px]">
+                  <label className="text-body-strong text-[var(--color-ink)]">Username</label>
+                  <Input
                     required
                     type="text"
                     value={formData.username}
                     onChange={e => setFormData({ ...formData, username: e.target.value })}
-                    className="w-full bg-black/5 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-apple-blue transition-all"
                     placeholder="e.g. jdoe"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-apple-text ml-1">Role</label>
+                <div className="space-y-[8px]">
+                  <label className="text-body-strong text-[var(--color-ink)]">Role</label>
                   <select
                     value={formData.role}
                     onChange={e => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full bg-black/5 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-apple-blue transition-all"
+                    className="w-full bg-[var(--color-canvas)] text-[var(--color-ink)] text-body-default rounded-pill px-[20px] h-[44px] border border-[var(--color-hairline)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-focus)]"
                   >
                     <option value="developer">Developer</option>
                     <option value="consultant">Consultant</option>
-                    {currentUser?.role === 'admin' && <option value="admin">Admin</option>}
+                    {((currentUser as any)?.role === 'admin' || (currentUser as any)?.is_superuser) && <option value="admin">Admin</option>}
                   </select>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-apple-text ml-1">Email Address</label>
-                <input
+              <div className="space-y-[8px]">
+                <label className="text-body-strong text-[var(--color-ink)]">Email Address</label>
+                <Input
                   required
                   type="email"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-black/5 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-apple-blue transition-all"
                   placeholder="name@company.com"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-apple-text ml-1 flex justify-between items-center">
-                  Temporary Password
-                  <button type="button" onClick={copyCredentials} className="text-[10px] text-apple-blue hover:underline">Copy Credentials</button>
-                </label>
-                <div className="relative">
-                  <input
-                    required
-                    type="text"
-                    value={formData.password}
-                    onChange={e => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full bg-black/5 border-none rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-apple-blue transition-all font-mono"
-                    placeholder="Minimum 8 characters"
-                  />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    <div className={cn("w-2 h-2 rounded-full", formData.password.length >= 8 ? "bg-green-500" : "bg-gray-300")} />
-                  </div>
+              <div className="space-y-[8px]">
+                <div className="flex justify-between items-center">
+                  <label className="text-body-strong text-[var(--color-ink)]">Temporary Password</label>
+                  <button type="button" onClick={copyCredentials} className="text-caption text-[var(--color-primary)] hover:underline">Copy</button>
                 </div>
+                <Input
+                  required
+                  type="text"
+                  value={formData.password}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Minimum 8 characters"
+                  className="font-mono"
+                />
               </div>
 
-              <div className="space-y-3">
-                <label className="text-sm font-semibold text-apple-text ml-1">Project Assignment</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[200px] overflow-y-auto p-4 bg-black/5 rounded-2xl border border-apple-border/50">
+              <div className="space-y-[8px]">
+                <label className="text-body-strong text-[var(--color-ink)]">Project Assignment</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-[8px] max-h-[200px] overflow-y-auto p-[12px] bg-[var(--color-canvas-parchment)] rounded-lg border border-[var(--color-divider-soft)]">
                   {projects.map((proj) => (
                     <label 
                       key={proj.id} 
                       className={cn(
-                        "flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer",
+                        "flex items-center gap-[12px] p-[8px] rounded-sm border transition-all cursor-pointer",
                         formData.selected_projects.includes(proj.id) 
-                          ? "bg-apple-blue/10 border-apple-blue/30 text-apple-blue" 
-                          : "bg-white border-transparent hover:border-apple-border"
+                          ? "bg-[var(--color-canvas)] border-[var(--color-primary)] text-[var(--color-ink)] shadow-sm"
+                          : "bg-[var(--color-canvas)] border-transparent hover:border-[var(--color-hairline)]"
                       )}
                     >
                       <input
@@ -335,34 +253,27 @@ export function Users() {
                         }}
                       />
                       <div className={cn(
-                        "w-4 h-4 rounded-md border flex items-center justify-center transition-colors",
-                        formData.selected_projects.includes(proj.id) ? "bg-apple-blue border-apple-blue" : "border-gray-300 bg-white"
+                        "w-[16px] h-[16px] rounded-sm border flex items-center justify-center transition-colors flex-shrink-0",
+                        formData.selected_projects.includes(proj.id) ? "bg-[var(--color-primary)] border-[var(--color-primary)]" : "border-[var(--color-hairline)] bg-[var(--color-canvas)]"
                       )}>
-                        {formData.selected_projects.includes(proj.id) && <Check className="w-3 h-3 text-white" />}
+                        {formData.selected_projects.includes(proj.id) && <Check className="w-[12px] h-[12px] text-[var(--color-on-primary)]" />}
                       </div>
-                      <span className="text-xs font-medium truncate">{proj.name}</span>
+                      <span className="text-caption font-medium truncate">{proj.name}</span>
                     </label>
                   ))}
                 </div>
-                <p className="text-[10px] text-apple-text-muted px-1 italic">
+                <p className="text-fine-print text-[var(--color-ink-muted-48)] mt-[4px]">
                   Note: Consultants and Admins automatically have Global access to all projects.
                 </p>
               </div>
 
-              <div className="pt-4 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-3 border border-apple-border rounded-2xl font-semibold text-apple-text hover:bg-black/5 transition-all active:scale-95"
-                >
+              <div className="pt-[24px] flex items-center gap-[16px]">
+                <Button type="button" variant="secondary-pill" onClick={() => setIsModalOpen(false)} className="flex-1">
                   Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-3 px-8 py-3 bg-apple-blue hover:bg-apple-blue-hover text-white rounded-2xl font-bold shadow-lg shadow-apple-blue/20 transition-all active:scale-95"
-                >
+                </Button>
+                <Button type="submit" variant="primary" className="flex-1">
                   Create Account
-                </button>
+                </Button>
               </div>
             </form>
           </div>

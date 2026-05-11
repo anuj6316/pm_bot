@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Button } from '@/src/components/ui/Button';
 import { Input } from '@/src/components/ui/Input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/Card';
 import { Loader2 } from 'lucide-react';
 import { Logo } from '@/src/components/Logo';
 
@@ -30,59 +29,56 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-apple-bg p-4">
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-8">
-          <Logo className="w-16 h-16 shadow-xl shadow-apple-blue/20 mb-4" />
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-br from-apple-text to-apple-text/70 bg-clip-text text-transparent">PM.ai</h1>
-          <p className="text-apple-text-muted text-sm mt-1">Sign in to your intelligent workspace</p>
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-surface-tile-1)] p-4 text-[var(--color-on-dark)]">
+      <div className="w-full max-w-md flex flex-col items-center">
+
+        <div className="mb-[64px] flex flex-col items-center">
+          <Logo className="w-[80px] h-[80px] text-[var(--color-on-dark)] mb-[24px]" />
+          <h1 className="text-display-lg text-center">PM.ai</h1>
+          <p className="text-lead mt-[16px] text-[var(--color-body-muted)] text-center">The intelligent workspace.</p>
         </div>
 
-        <Card className="border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white/70 backdrop-blur-xl">
-          <CardHeader>
-            <CardTitle>Sign In</CardTitle>
-            <CardDescription>Enter your credentials</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              {error && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  {error}
-                </div>
-              )}
-              <div className="space-y-2">
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
+        <div className="w-full">
+          <form onSubmit={handleLogin} className="space-y-[16px]">
+            {error && (
+              <div className="text-body-default text-red-400 text-center mb-[24px]">
+                {error}
               </div>
-              <div className="space-y-2">
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+            )}
+
+            <div className="space-y-[16px]">
+              <input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="w-full bg-[var(--color-surface-tile-2)] text-[var(--color-on-dark)] text-body-default rounded-[100px] px-[24px] h-[52px] border-none placeholder:text-[var(--color-ink-muted-48)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-on-dark)]"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                className="w-full bg-[var(--color-surface-tile-2)] text-[var(--color-on-dark)] text-body-default rounded-[100px] px-[24px] h-[52px] border-none placeholder:text-[var(--color-ink-muted-48)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-on-dark)]"
+              />
+            </div>
+
+            <div className="pt-[24px] flex justify-center">
+              <Button type="submit" variant="primary" className="min-w-[140px]" disabled={loading}>
                 {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Signing in…
-                  </>
+                  <Loader2 className="w-[18px] h-[18px] animate-spin" />
                 ) : (
                   'Sign In'
                 )}
               </Button>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
+          </form>
+        </div>
+
       </div>
     </div>
   );

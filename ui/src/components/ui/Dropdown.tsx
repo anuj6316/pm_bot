@@ -65,7 +65,7 @@ export function Dropdown({
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
             className={cn(
-              "absolute z-50 mt-2 min-w-[12rem] overflow-hidden rounded-2xl border border-apple-border/50 bg-white/80 p-1.5 shadow-xl backdrop-blur-xl",
+              "absolute z-50 mt-2 min-w-[12rem] overflow-hidden rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-[8px] shadow-product-elevation",
               align === "right" ? "right-0" : "left-0",
               contentClassName
             )}
@@ -96,9 +96,9 @@ export function DropdownItem({
     <button
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors text-left",
+        "flex w-full items-center gap-3 rounded-md px-[12px] py-[8px] text-button-utility transition-colors text-left",
         {
-          "text-apple-text hover:bg-black/5": variant === "default",
+          "text-[var(--color-ink)] hover:bg-[var(--color-canvas-parchment)]": variant === "default",
           "text-red-500 hover:bg-red-50": variant === "danger",
         },
         className
@@ -110,12 +110,12 @@ export function DropdownItem({
 }
 
 export function DropdownSeparator() {
-  return <div className="my-1.5 h-px bg-apple-border/30" />;
+  return <div className="my-[4px] h-px bg-[var(--color-divider-soft)]" />;
 }
 
 export function DropdownLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-apple-text-muted">
+    <div className="px-[12px] py-[8px] text-fine-print text-[var(--color-ink-muted-48)]">
       {children}
     </div>
   );

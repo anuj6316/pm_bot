@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, User, Mail, Calendar, Shield, Key, Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
+import { Loader2, Mail, Calendar, Shield, Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Input } from '@/src/components/ui/Input';
 import { Button } from '@/src/components/ui/Button';
-
-const roleConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  admin: { label: 'Admin', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
-  consultant: { label: 'Consultant', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-  developer: { label: 'Developer', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
-};
+import { Card, CardContent } from '@/src/components/ui/Card';
+import { Badge } from '@/src/components/ui/Badge';
 
 export function Profile() {
   const { user, updateProfile, changePassword } = useAuth();
@@ -79,16 +75,6 @@ export function Profile() {
       month: 'long',
       day: 'numeric',
     });
-  };
-
-  const getRoleBadge = (role: string) => {
-    const config = roleConfig[role] || roleConfig.developer;
-    return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${config.bg} ${config.color} ${config.border}`}>
-        <Shield className="w-3 h-3" />
-        {config.label}
-      </span>
-    );
   };
 
   const handleProfileSave = async () => {
@@ -161,132 +147,131 @@ export function Profile() {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-8 h-8 animate-spin text-apple-text-muted" />
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--color-ink-muted-48)]" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-apple-text">Profile</h1>
-        <p className="text-apple-text-muted mt-1">Manage your account settings and preferences.</p>
-      </div>
+    <div className="flex flex-col min-h-full bg-[var(--color-canvas-parchment)]">
 
-      <div className="space-y-6">
-        <div className="bg-apple-card/80 backdrop-blur-xl border border-apple-border/50 rounded-3xl overflow-hidden shadow-sm">
-          <div className="px-6 py-5 border-b border-apple-border/50 bg-white/30 backdrop-blur-md">
-            <h2 className="text-lg font-semibold text-apple-text flex items-center gap-2">
-              <User className="w-5 h-5 text-apple-blue" />
-              Personal Information
-            </h2>
-          </div>
+      {/* Light Hero Header */}
+      <section className="bg-[var(--color-canvas)] border-b border-[var(--color-divider-soft)] px-[32px] py-[48px]">
+        <h1 className="text-display-lg text-[var(--color-ink)]">Profile.</h1>
+        <p className="text-lead mt-[8px] text-[var(--color-ink-muted-80)]">
+           Manage your account settings and preferences.
+        </p>
+      </section>
 
-          <div className="p-6">
-            <div className="flex items-start gap-6 mb-8">
-              <div className="w-20 h-20 rounded-full bg-apple-blue flex items-center justify-center shadow-md flex-shrink-0">
-                <span className="text-white font-bold text-2xl">{getUserInitials()}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-xl font-semibold text-apple-text">{getUserDisplayName()}</h3>
-                <div className="mt-2 space-y-1.5">
-                  <div className="flex items-center gap-2 text-sm text-apple-text-muted">
-                    <Mail className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{user.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-apple-text-muted">
-                    <Calendar className="w-4 h-4 flex-shrink-0" />
-                    <span>Joined {formatDate(user.date_joined)}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-shrink-0">
-                {getRoleBadge(user.role)}
-              </div>
+      {/* Main Content Area */}
+      <section className="flex-1 px-[32px] py-[48px] flex flex-col items-center">
+        <div className="w-full max-w-2xl flex flex-col gap-[24px]">
+
+          {/* Personal Information Card */}
+          <Card>
+            <div className="px-[24px] py-[16px] border-b border-[var(--color-divider-soft)] bg-[var(--color-surface-pearl)]">
+              <h2 className="text-body-strong text-[var(--color-ink)]">Personal Information</h2>
             </div>
+            <CardContent className="p-[24px]">
 
-            <div className="border-t border-apple-border/30 pt-6">
-              <h4 className="text-sm font-medium text-apple-text mb-4">Edit Profile</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-apple-text-muted uppercase tracking-wide">First Name</label>
-                  <Input
-                    value={firstName}
-                    onChange={(e) => {
-                      setFirstName(e.target.value);
-                      setProfileErrors((prev) => ({ ...prev, firstName: undefined }));
-                    }}
-                    placeholder="Enter first name"
-                    className="border-apple-border/60 focus:ring-apple-blue/30 focus:border-apple-blue"
-                  />
-                  {profileErrors.firstName && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {profileErrors.firstName}
-                    </p>
-                  )}
+              {/* Avatar Row */}
+              <div className="flex items-center gap-[24px] mb-[32px]">
+                <div className="w-[80px] h-[80px] rounded-full bg-[var(--color-surface-chip-translucent)] flex items-center justify-center flex-shrink-0">
+                  <span className="text-[var(--color-ink)] font-semibold text-display-md">{getUserInitials()}</span>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-apple-text-muted uppercase tracking-wide">Last Name</label>
-                  <Input
-                    value={lastName}
-                    onChange={(e) => {
-                      setLastName(e.target.value);
-                      setProfileErrors((prev) => ({ ...prev, lastName: undefined }));
-                    }}
-                    placeholder="Enter last name"
-                    className="border-apple-border/60 focus:ring-apple-blue/30 focus:border-apple-blue"
-                  />
-                  {profileErrors.lastName && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {profileErrors.lastName}
-                    </p>
-                  )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-display-md text-[var(--color-ink)] mb-[8px]">{getUserDisplayName()}</h3>
+                  <div className="flex items-center gap-[16px] text-caption text-[var(--color-ink-muted-80)]">
+                    <div className="flex items-center gap-[6px]">
+                      <Mail className="w-[14px] h-[14px]" />
+                      <span>{user.email}</span>
+                    </div>
+                    <div className="flex items-center gap-[6px]">
+                      <Calendar className="w-[14px] h-[14px]" />
+                      <span>Joined {formatDate(user.date_joined)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-1.5 mb-4">
-                <label className="text-xs font-medium text-apple-text-muted uppercase tracking-wide">Username</label>
-                <Input
-                  value={user.username || ''}
-                  disabled
-                  className="bg-apple-bg/50 border-apple-border/40 text-apple-text-muted"
-                />
-                <p className="text-[11px] text-apple-text-muted/70">Username cannot be changed</p>
-              </div>
-
-              {profileSuccess && (
-                <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 mb-4">
-                  <Check className="w-4 h-4" />
-                  {profileSuccess}
+              {/* Edit Form */}
+              <div className="space-y-[16px] border-t border-[var(--color-divider-soft)] pt-[24px]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-[16px]">
+                  <div className="space-y-[8px]">
+                    <label className="text-caption-strong text-[var(--color-ink)] uppercase tracking-wide">First Name</label>
+                    <Input
+                      value={firstName}
+                      onChange={(e) => {
+                        setFirstName(e.target.value);
+                        setProfileErrors((prev) => ({ ...prev, firstName: undefined }));
+                      }}
+                      placeholder="Enter first name"
+                    />
+                    {profileErrors.firstName && (
+                      <p className="text-caption text-red-500 flex items-center gap-1">
+                        <AlertCircle className="w-[14px] h-[14px]" />
+                        {profileErrors.firstName}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-[8px]">
+                    <label className="text-caption-strong text-[var(--color-ink)] uppercase tracking-wide">Last Name</label>
+                    <Input
+                      value={lastName}
+                      onChange={(e) => {
+                        setLastName(e.target.value);
+                        setProfileErrors((prev) => ({ ...prev, lastName: undefined }));
+                      }}
+                      placeholder="Enter last name"
+                    />
+                    {profileErrors.lastName && (
+                      <p className="text-caption text-red-500 flex items-center gap-1">
+                        <AlertCircle className="w-[14px] h-[14px]" />
+                        {profileErrors.lastName}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              )}
 
-              <Button
-                onClick={handleProfileSave}
-                disabled={profileLoading}
-                className="bg-apple-blue hover:bg-apple-blue-hover text-white"
-              >
-                {profileLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
+                <div className="space-y-[8px]">
+                  <label className="text-caption-strong text-[var(--color-ink)] uppercase tracking-wide">Username</label>
+                  <Input
+                    value={user.username || ''}
+                    disabled
+                    className="bg-[var(--color-canvas-parchment)] text-[var(--color-ink-muted-48)]"
+                  />
+                  <p className="text-fine-print text-[var(--color-ink-muted-48)]">Username cannot be changed</p>
+                </div>
+
+                {profileSuccess && (
+                  <div className="flex items-center gap-[8px] text-body-default text-green-600 bg-green-50 px-[16px] py-[12px] rounded-sm">
+                    <Check className="w-[16px] h-[16px]" />
+                    {profileSuccess}
+                  </div>
+                )}
+
+                <div className="pt-[8px]">
+                  <Button
+                    onClick={handleProfileSave}
+                    disabled={profileLoading}
+                    variant="primary"
+                  >
+                    {profileLoading ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Password Card */}
+          <Card>
+            <div className="px-[24px] py-[16px] border-b border-[var(--color-divider-soft)] bg-[var(--color-surface-pearl)]">
+              <h2 className="text-body-strong text-[var(--color-ink)]">Change Password</h2>
             </div>
-          </div>
-        </div>
+            <CardContent className="p-[24px] space-y-[16px]">
 
-        <div className="bg-apple-card/80 backdrop-blur-xl border border-apple-border/50 rounded-3xl overflow-hidden shadow-sm">
-          <div className="px-6 py-5 border-b border-apple-border/50 bg-white/30 backdrop-blur-md">
-            <h2 className="text-lg font-semibold text-apple-text flex items-center gap-2">
-              <Key className="w-5 h-5 text-apple-blue" />
-              Change Password
-            </h2>
-          </div>
-
-          <div className="p-6">
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-apple-text-muted uppercase tracking-wide">Current Password</label>
+              <div className="space-y-[8px]">
+                <label className="text-caption-strong text-[var(--color-ink)] uppercase tracking-wide">Current Password</label>
                 <div className="relative">
                   <Input
                     type={showCurrentPassword ? 'text' : 'password'}
@@ -296,26 +281,26 @@ export function Profile() {
                       setPasswordErrors((prev) => ({ ...prev, oldPassword: undefined }));
                     }}
                     placeholder="Enter current password"
-                    className="pr-10 border-apple-border/60 focus:ring-apple-blue/30 focus:border-apple-blue"
+                    className="pr-[40px]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-apple-text-muted hover:text-apple-text transition-colors"
+                    className="absolute right-[12px] top-1/2 -translate-y-1/2 text-[var(--color-ink-muted-48)] hover:text-[var(--color-ink)] transition-colors"
                   >
-                    {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showCurrentPassword ? <EyeOff className="w-[16px] h-[16px]" /> : <Eye className="w-[16px] h-[16px]" />}
                   </button>
                 </div>
                 {passwordErrors.oldPassword && (
-                  <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
+                  <p className="text-caption text-red-500 flex items-center gap-1">
+                    <AlertCircle className="w-[14px] h-[14px]" />
                     {passwordErrors.oldPassword}
                   </p>
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-apple-text-muted uppercase tracking-wide">New Password</label>
+              <div className="space-y-[8px]">
+                <label className="text-caption-strong text-[var(--color-ink)] uppercase tracking-wide">New Password</label>
                 <div className="relative">
                   <Input
                     type={showNewPassword ? 'text' : 'password'}
@@ -325,26 +310,26 @@ export function Profile() {
                       setPasswordErrors((prev) => ({ ...prev, newPassword: undefined }));
                     }}
                     placeholder="Enter new password (min. 8 characters)"
-                    className="pr-10 border-apple-border/60 focus:ring-apple-blue/30 focus:border-apple-blue"
+                    className="pr-[40px]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-apple-text-muted hover:text-apple-text transition-colors"
+                    className="absolute right-[12px] top-1/2 -translate-y-1/2 text-[var(--color-ink-muted-48)] hover:text-[var(--color-ink)] transition-colors"
                   >
-                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showNewPassword ? <EyeOff className="w-[16px] h-[16px]" /> : <Eye className="w-[16px] h-[16px]" />}
                   </button>
                 </div>
                 {passwordErrors.newPassword && (
-                  <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
+                  <p className="text-caption text-red-500 flex items-center gap-1">
+                    <AlertCircle className="w-[14px] h-[14px]" />
                     {passwordErrors.newPassword}
                   </p>
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-apple-text-muted uppercase tracking-wide">Confirm New Password</label>
+              <div className="space-y-[8px]">
+                <label className="text-caption-strong text-[var(--color-ink)] uppercase tracking-wide">Confirm New Password</label>
                 <div className="relative">
                   <Input
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -354,43 +339,45 @@ export function Profile() {
                       setPasswordErrors((prev) => ({ ...prev, confirmPassword: undefined }));
                     }}
                     placeholder="Confirm new password"
-                    className="pr-10 border-apple-border/60 focus:ring-apple-blue/30 focus:border-apple-blue"
+                    className="pr-[40px]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-apple-text-muted hover:text-apple-text transition-colors"
+                    className="absolute right-[12px] top-1/2 -translate-y-1/2 text-[var(--color-ink-muted-48)] hover:text-[var(--color-ink)] transition-colors"
                   >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showConfirmPassword ? <EyeOff className="w-[16px] h-[16px]" /> : <Eye className="w-[16px] h-[16px]" />}
                   </button>
                 </div>
                 {passwordErrors.confirmPassword && (
-                  <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
+                  <p className="text-caption text-red-500 flex items-center gap-1">
+                    <AlertCircle className="w-[14px] h-[14px]" />
                     {passwordErrors.confirmPassword}
                   </p>
                 )}
               </div>
-            </div>
 
-            {passwordSuccess && (
-              <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 mt-4">
-                <Check className="w-4 h-4" />
-                {passwordSuccess}
+              {passwordSuccess && (
+                <div className="flex items-center gap-[8px] text-body-default text-green-600 bg-green-50 px-[16px] py-[12px] rounded-sm mt-[16px]">
+                  <Check className="w-[16px] h-[16px]" />
+                  {passwordSuccess}
+                </div>
+              )}
+
+              <div className="pt-[8px]">
+                <Button
+                  onClick={handlePasswordChange}
+                  disabled={passwordLoading || !oldPassword || !newPassword || !confirmPassword}
+                  variant="secondary-pill"
+                >
+                  {passwordLoading ? 'Updating...' : 'Update Password'}
+                </Button>
               </div>
-            )}
 
-            <Button
-              onClick={handlePasswordChange}
-              disabled={passwordLoading || !oldPassword || !newPassword || !confirmPassword}
-              className="mt-4 bg-apple-blue hover:bg-apple-blue-hover text-white"
-            >
-              {passwordLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Update Password
-            </Button>
-          </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

@@ -1,17 +1,12 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/Card';
+import { Card, CardContent } from '@/src/components/ui/Card';
 import { Badge } from '@/src/components/ui/Badge';
 import { Button } from '@/src/components/ui/Button';
 import { RefreshCw, Play, CheckCircle2, Clock, AlertCircle, Loader2, ChevronDown, X, ExternalLink, Check } from 'lucide-react';
 import { fetchSessions, syncSession, approveSession, type Session } from '@/src/lib/api';
 
-interface ModalConfig {
-  type: 'pending' | 'processing' | 'completed';
-  title: string;
-  sessions: Session[];
-}
-
+// Need to update the UI to use alternating tiles and utility grids
 export function Dashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +14,14 @@ export function Dashboard() {
   const [error, setError] = useState('');
   const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set());
   const [sessionsDropdownOpen, setSessionsDropdownOpen] = useState(false);
-  const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
+
+  // Modals aren't explicitly mentioned in the design, but let's re-style the existing modal code to match
+  const [modalConfig, setModalConfig] = useState<{
+    type: 'pending' | 'processing' | 'completed';
+    title: string;
+    sessions: Session[];
+  } | null>(null);
+
   const [approvingIds, setApprovingIds] = useState<Set<number>>(new Set());
 
   const loadSessions = useCallback(async () => {
@@ -87,413 +89,202 @@ export function Dashboard() {
     return date.toDateString() === today.toDateString();
   };
 
-  const pendingApproval = useMemo(() =>
-    sessions.filter((s) => s.status === 'COMPLETED' && !s.is_approved),
-    [sessions]
-  );
-
-  const processing = useMemo(() =>
-    sessions.filter((s) => s.status === 'PROCESSING'),
-    [sessions]
-  );
-
-  const completedToday = useMemo(() =>
-    sessions.filter((s) => {
-      return (
-        (s.status === 'COMPLETED' || s.status === 'ARCHIVED') &&
-        isToday(s.created_at)
-      );
-    }),
-    [sessions]
-  );
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'COMPLETED': return <CheckCircle2 className="w-4 h-4 text-green-500" />;
-      case 'PROCESSING': return <RefreshCw className="w-4 h-4 text-apple-blue animate-spin" />;
-      case 'PENDING': return <Clock className="w-4 h-4 text-orange-500" />;
-      case 'FAILED': return <AlertCircle className="w-4 h-4 text-red-500" />;
-      default: return <CheckCircle2 className="w-4 h-4 text-apple-text-muted" />;
-    }
-  };
+  const pendingApproval = useMemo(() => sessions.filter((s) => s.status === 'COMPLETED' && !s.is_approved), [sessions]);
+  const processing = useMemo(() => sessions.filter((s) => s.status === 'PROCESSING'), [sessions]);
+  const completedToday = useMemo(() => sessions.filter((s) => (s.status === 'COMPLETED' || s.status === 'ARCHIVED') && isToday(s.created_at)), [sessions]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'COMPLETED': return <Badge variant="success">Completed</Badge>;
-      case 'PROCESSING': return <Badge variant="default" className="bg-apple-blue">Processing</Badge>;
-      case 'PENDING': return <Badge variant="warning">Pending</Badge>;
-      case 'FAILED': return <Badge variant="destructive">Failed</Badge>;
-      case 'ARCHIVED': return <Badge variant="secondary">Archived</Badge>;
-      default: return <Badge variant="secondary">{status}</Badge>;
+      case 'COMPLETED': return <Badge variant="translucent">Completed</Badge>;
+      case 'PROCESSING': return <Badge variant="default">Processing</Badge>;
+      case 'PENDING': return <Badge variant="outline">Pending</Badge>;
+      case 'FAILED': return <Badge variant="outline" className="text-red-500 border-red-200">Failed</Badge>;
+      case 'ARCHIVED': return <Badge variant="translucent">Archived</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
     }
   };
 
   const getLabelBadge = (label: string | null) => {
     if (!label) return null;
-    switch (label.toUpperCase()) {
-      case 'BUG': return <Badge variant="destructive">Bug</Badge>;
-      case 'FEATURE': return <Badge variant="success">Feature</Badge>;
-      case 'QUESTION': return <Badge variant="warning">Question</Badge>;
-      case 'TRIAGE': return <Badge className="bg-violet-500/10 text-violet-700 border border-violet-200">Triage</Badge>;
-      case 'DECISION': return <Badge className="bg-blue-500/10 text-blue-700 border border-blue-200">Decision</Badge>;
-      case 'IMPROVEMENT': return <Badge className="bg-cyan-500/10 text-cyan-700 border border-cyan-200">Improvement</Badge>;
-      default: return <Badge className="bg-gray-100 text-gray-700 border border-gray-200">{label.charAt(0).toUpperCase() + label.slice(1).toLowerCase()}</Badge>;
-    }
+    return <Badge variant="outline">{label.charAt(0).toUpperCase() + label.slice(1).toLowerCase()}</Badge>;
   };
 
   const openModal = (type: 'pending' | 'processing' | 'completed', title: string, filteredSessions: Session[]) => {
     setModalConfig({ type, title, sessions: filteredSessions });
   };
-
   const closeModal = () => setModalConfig(null);
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') closeModal();
-  }, []);
-
-  useEffect(() => {
-    if (modalConfig) {
-      document.addEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
-    };
-  }, [modalConfig, handleKeyDown]);
-
-  const SessionRow = ({ session, showActions = true }: { session: Session; showActions?: boolean }) => (
-    <div className="p-4 flex items-center justify-between hover:bg-black/[0.02] transition-colors border-b border-apple-border/30 last:border-b-0">
-      <div className="flex items-center gap-4 min-w-0">
-        <div className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center flex-shrink-0">
-          {getStatusIcon(session.status)}
-        </div>
+  const SessionRow = ({ session }: { session: Session }) => (
+    <div className="py-[16px] flex items-center justify-between border-b border-[var(--color-divider-soft)] last:border-0 group">
+      <div className="flex items-center gap-[16px] min-w-0">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-medium font-mono text-sm truncate">{session.plane_issue_id}</p>
+          <div className="flex items-center gap-[8px]">
+            <p className="font-mono text-body-strong truncate">{session.plane_issue_id}</p>
             {getLabelBadge(session.triage_label)}
+            {getStatusBadge(session.status)}
           </div>
-          <div className="flex items-center gap-3 mt-1 text-xs text-apple-text-muted">
+          <div className="flex items-center gap-[8px] mt-[4px] text-caption text-[var(--color-body-muted)]">
             <span>{new Date(session.created_at).toLocaleString()}</span>
-            {session.project_name && (
-              <span className="hidden sm:inline text-apple-text-muted/70">· {session.project_name}</span>
-            )}
           </div>
         </div>
       </div>
-      {showActions && (
-        <div className="flex items-center gap-3 flex-shrink-0">
-          {getStatusBadge(session.status)}
-          {(session.status === 'FAILED' || session.status === 'PENDING') && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={syncingIds.has(session.id)}
-              onClick={() => handleSyncSession(session.id)}
-              className="h-8 px-2"
-            >
-              {syncingIds.has(session.id) ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Play className="w-3 h-3" />
-              )}
-            </Button>
-          )}
-          {session.status === 'ARCHIVED' && session.is_approved && (
-            <Badge variant="success" className="bg-green-500/10 text-green-600 border-0">
-              Approved
-            </Badge>
-          )}
-        </div>
-      )}
+
+      <div className="flex items-center gap-[8px] flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {(session.status === 'FAILED' || session.status === 'PENDING') && (
+          <Button
+            variant="pearl-capsule"
+            disabled={syncingIds.has(session.id)}
+            onClick={() => handleSyncSession(session.id)}
+          >
+            {syncingIds.has(session.id) ? 'Retrying...' : 'Retry'}
+          </Button>
+        )}
+      </div>
     </div>
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-apple-text">Dashboard</h1>
-          <p className="text-apple-text-muted mt-1">Monitor agent sessions and approvals.</p>
+    <div className="flex flex-col">
+      {/* Light Hero Tile */}
+      <section className="bg-[var(--color-canvas)] text-[var(--color-ink)] px-[32px] py-[var(--spacing-section)] flex flex-col items-center text-center border-b border-[var(--color-divider-soft)]">
+        <h1 className="text-display-lg max-w-2xl">Project Overview.</h1>
+        <p className="text-lead mt-[16px] max-w-2xl text-[var(--color-ink-muted-80)]">
+          Monitor agent sessions, track task progression, and manage approvals.
+        </p>
+        <div className="mt-[32px] flex items-center gap-[16px]">
+          <Button onClick={handleSync} disabled={isSyncing} variant={isSyncing ? "secondary-pill" : "primary"}>
+            {isSyncing ? 'Refreshing...' : 'Refresh Data'}
+          </Button>
         </div>
-        <Button onClick={handleSync} disabled={isSyncing} variant="secondary">
-          {isSyncing ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <RefreshCw className="w-4 h-4 mr-2" />
-          )}
-          Refresh
-        </Button>
-      </div>
+      </section>
 
-      {error && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          {error}
-        </div>
-      )}
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <motion.button
-          whileHover={{ y: -2, boxShadow: '0 8px 25px -5px rgba(0, 0, 0, 0.1)' }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ duration: 0.2 }}
-          onClick={() => openModal('pending', 'Pending Approval', pendingApproval)}
-          className="text-left bg-apple-card/80 backdrop-blur-xl border border-apple-border/50 rounded-2xl p-0 overflow-hidden cursor-pointer"
-        >
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-apple-text-muted">Pending Approval</p>
-                <p className="text-3xl font-light mt-2">{loading ? '—' : pendingApproval.length}</p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center">
-                <Clock className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </motion.button>
-
-        <motion.button
-          whileHover={{ y: -2, boxShadow: '0 8px 25px -5px rgba(0, 0, 0, 0.1)' }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ duration: 0.2 }}
-          onClick={() => openModal('processing', 'Processing Sessions', processing)}
-          className="text-left bg-apple-card/80 backdrop-blur-xl border border-apple-border/50 rounded-2xl p-0 overflow-hidden cursor-pointer"
-        >
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-apple-text-muted">Processing</p>
-                <p className="text-3xl font-light mt-2">{loading ? '—' : processing.length}</p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-apple-blue/10 flex items-center justify-center">
-                <RefreshCw className="w-6 h-6 text-apple-blue" />
-              </div>
-            </div>
-          </CardContent>
-        </motion.button>
-
-        <motion.button
-          whileHover={{ y: -2, boxShadow: '0 8px 25px -5px rgba(0, 0, 0, 0.1)' }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ duration: 0.2 }}
-          onClick={() => openModal('completed', 'Completed Today', completedToday)}
-          className="text-left bg-apple-card/80 backdrop-blur-xl border border-apple-border/50 rounded-2xl p-0 overflow-hidden cursor-pointer"
-        >
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-apple-text-muted">Completed Today</p>
-                <p className="text-3xl font-light mt-2">{loading ? '—' : completedToday.length}</p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </motion.button>
-      </div>
-
-      {/* Recent Sessions Dropdown */}
-      <div className="bg-apple-card/80 backdrop-blur-xl border border-apple-border/50 rounded-2xl overflow-hidden shadow-sm">
-        <motion.button
-          initial={false}
-          onClick={() => setSessionsDropdownOpen(!sessionsDropdownOpen)}
-          className="w-full px-6 py-4 flex items-center justify-between bg-white/30 backdrop-blur-md border-b border-apple-border/50 hover:bg-white/40 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-apple-text">Recent Sessions</span>
-            {!loading && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-apple-blue/10 text-apple-blue font-medium">
-                {sessions.length}
-              </span>
-            )}
-          </div>
-          <motion.div
-            animate={{ rotate: sessionsDropdownOpen ? 180 : 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
+      {/* Dark Product Summary Tile */}
+      <section className="bg-[var(--color-surface-tile-1)] text-[var(--color-on-dark)] px-[32px] py-[var(--spacing-section)] flex flex-col items-center">
+        <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-[24px]">
+          {/* Card 1 */}
+          <button
+            onClick={() => openModal('pending', 'Pending Approval', pendingApproval)}
+            className="flex flex-col items-center justify-center py-[48px] px-[24px] rounded-lg bg-[var(--color-surface-tile-2)] hover:bg-[var(--color-surface-tile-3)] transition-colors cursor-pointer"
           >
-            <ChevronDown className="w-5 h-5 text-apple-text-muted" />
-          </motion.div>
-        </motion.button>
+            <p className="text-hero-display mb-[8px]">{loading ? '—' : pendingApproval.length}</p>
+            <p className="text-body-strong text-[var(--color-body-muted)]">Pending Approval</p>
+          </button>
 
-        <AnimatePresence initial={false}>
-          {sessionsDropdownOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="overflow-hidden"
-            >
-              <div className="divide-y divide-apple-border/50 max-h-[400px] overflow-y-auto">
-                {loading ? (
-                  <div className="p-8 flex justify-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-apple-text-muted" />
-                  </div>
-                ) : sessions.length === 0 ? (
-                  <div className="p-8 text-center text-apple-text-muted text-sm">
-                    No sessions yet. Celery Beat polls Plane every 5 minutes automatically.
-                  </div>
-                ) : (
-                  sessions.map((session) => (
-                    <SessionRow key={session.id} session={session} />
-                  ))
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          {/* Card 2 */}
+          <button
+            onClick={() => openModal('processing', 'Processing', processing)}
+            className="flex flex-col items-center justify-center py-[48px] px-[24px] rounded-lg bg-[var(--color-surface-tile-2)] hover:bg-[var(--color-surface-tile-3)] transition-colors cursor-pointer"
+          >
+            <p className="text-hero-display mb-[8px]">{loading ? '—' : processing.length}</p>
+            <p className="text-body-strong text-[var(--color-body-muted)]">Processing</p>
+          </button>
 
-      {/* Modal */}
+          {/* Card 3 */}
+          <button
+            onClick={() => openModal('completed', 'Completed Today', completedToday)}
+            className="flex flex-col items-center justify-center py-[48px] px-[24px] rounded-lg bg-[var(--color-surface-tile-2)] hover:bg-[var(--color-surface-tile-3)] transition-colors cursor-pointer"
+          >
+            <p className="text-hero-display mb-[8px]">{loading ? '—' : completedToday.length}</p>
+            <p className="text-body-strong text-[var(--color-body-muted)]">Completed Today</p>
+          </button>
+        </div>
+      </section>
+
+      {/* Parchment Utility Grid */}
+      <section className="bg-[var(--color-canvas-parchment)] flex-1 px-[32px] py-[var(--spacing-section)] flex flex-col items-center">
+        <div className="w-full max-w-5xl">
+          <div className="flex items-center justify-between mb-[32px]">
+            <h2 className="text-display-md text-[var(--color-ink)]">Recent Sessions</h2>
+            <Button variant="ghost" onClick={() => setSessionsDropdownOpen(!sessionsDropdownOpen)}>
+              {sessionsDropdownOpen ? 'Collapse' : 'Expand'}
+            </Button>
+          </div>
+
+          <AnimatePresence initial={false}>
+            {(sessionsDropdownOpen || true) && ( // Keeping it open by default in the new design for better visibility
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
+              >
+                <Card>
+                  <CardContent className="p-[24px]">
+                    {loading ? (
+                      <div className="py-[48px] text-center text-body-default text-[var(--color-body-muted)]">Loading...</div>
+                    ) : sessions.length === 0 ? (
+                      <div className="py-[48px] text-center text-body-default text-[var(--color-body-muted)]">No sessions yet.</div>
+                    ) : (
+                      <div className="flex flex-col">
+                        {sessions.map(session => <SessionRow key={session.id} session={session} />)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </section>
+
+      {/* Modal Re-style */}
       <AnimatePresence>
         {modalConfig && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-surface-black)]/80 backdrop-blur-md p-4"
           >
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-              onClick={closeModal}
-            />
-
-            {/* Modal Content */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="relative bg-apple-card/95 backdrop-blur-xl rounded-3xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-[var(--color-canvas)] rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
             >
-              {/* Modal Header */}
-              <div className="px-6 py-5 border-b border-apple-border/50 flex items-center justify-between bg-white/30 backdrop-blur-md">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold text-apple-text">{modalConfig.title}</h2>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-apple-blue/10 text-apple-blue font-medium">
-                    {modalConfig.sessions.length}
-                  </span>
-                </div>
-                <button
-                  onClick={closeModal}
-                  className="p-2 rounded-xl text-apple-text-muted hover:text-apple-text hover:bg-black/5 transition-colors"
-                >
-                  <X className="w-5 h-5" />
+              <div className="px-[24px] py-[24px] border-b border-[var(--color-divider-soft)] flex items-center justify-between">
+                <h3 className="text-display-md text-[var(--color-ink)]">{modalConfig.title}</h3>
+                <button onClick={closeModal} className="w-[32px] h-[32px] flex items-center justify-center rounded-full bg-[var(--color-surface-chip-translucent)] hover:bg-[var(--color-divider-soft)] transition-colors">
+                  <X className="w-[16px] h-[16px] text-[var(--color-ink)]" />
                 </button>
               </div>
 
-              {/* Modal Content */}
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto px-[24px] py-[16px]">
                 {modalConfig.sessions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="w-16 h-16 rounded-full bg-apple-bg flex items-center justify-center mb-4">
-                      <CheckCircle2 className="w-8 h-8 text-apple-text-muted" />
-                    </div>
-                    <p className="text-apple-text font-medium">No sessions found</p>
-                    <p className="text-sm text-apple-text-muted mt-1">
-                      There are no {modalConfig.type === 'pending' ? 'sessions pending approval' : modalConfig.type === 'processing' ? 'sessions being processed' : 'sessions completed today'}.
-                    </p>
+                  <div className="py-[64px] text-center text-lead text-[var(--color-body-muted)]">
+                    No sessions found.
                   </div>
                 ) : (
-                  <div className="divide-y divide-apple-border/30">
+                  <div className="flex flex-col gap-[16px]">
                     {modalConfig.sessions.map((session) => (
-                      <div key={session.id} className="p-4 hover:bg-black/[0.02] transition-colors">
-                        <div className="flex items-start justify-between gap-4 mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center flex-shrink-0">
-                              {getStatusIcon(session.status)}
-                            </div>
-                            <div>
-                              <p className="font-medium font-mono text-sm">{session.plane_issue_id}</p>
-                              {getLabelBadge(session.triage_label)}
-                            </div>
+                      <Card key={session.id}>
+                        <CardContent className="p-[16px] flex flex-col gap-[8px]">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-body-strong text-[var(--color-ink)]">{session.plane_issue_id}</span>
+                            {getStatusBadge(session.status)}
                           </div>
-                          {getStatusBadge(session.status)}
-                        </div>
 
-                        <div className="pl-13 space-y-2">
-                          <div className="flex items-center gap-4 text-xs text-apple-text-muted">
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="w-3.5 h-3.5" />
-                              <span>{new Date(session.created_at).toLocaleString()}</span>
-                            </div>
-                            {session.project_name && (
-                              <div className="flex items-center gap-1.5">
-                                <span>·</span>
-                                <span>{session.project_name}</span>
-                              </div>
-                            )}
+                          <div className="text-caption text-[var(--color-body-muted)]">
+                            {new Date(session.created_at).toLocaleString()}
                           </div>
 
                           {session.status === 'COMPLETED' && !session.is_approved && (
-                            <div className="flex items-center gap-2">
-                              <Badge variant="warning" className="text-xs">Awaiting Approval</Badge>
+                            <div className="mt-[8px]">
                               <Button
-                                size="sm"
+                                variant="primary"
                                 onClick={() => handleApproveSession(session.id)}
                                 disabled={approvingIds.has(session.id)}
-                                className="h-7 bg-green-600 hover:bg-green-700 text-white"
                               >
-                                {approvingIds.has(session.id) ? (
-                                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                                ) : (
-                                  <Check className="w-3 h-3 mr-1.5" />
-                                )}
-                                Approve
+                                {approvingIds.has(session.id) ? 'Approving...' : 'Approve Task'}
                               </Button>
                             </div>
                           )}
-
-                          <div className="flex items-center gap-2 pt-2">
-                            {(session.status === 'FAILED' || session.status === 'PENDING') && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={syncingIds.has(session.id)}
-                                onClick={() => handleSyncSession(session.id)}
-                                className="h-8"
-                              >
-                                {syncingIds.has(session.id) ? (
-                                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                                ) : (
-                                  <Play className="w-3 h-3 mr-1.5" />
-                                )}
-                                Retry
-                              </Button>
-                            )}
-                            {session.plane_issue_url && (
-                              <a
-                                href={session.plane_issue_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 text-xs text-apple-blue hover:underline"
-                              >
-                                View in Plane
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 )}
-              </div>
-
-              {/* Modal Footer */}
-              <div className="px-6 py-4 border-t border-apple-border/50 bg-white/20 backdrop-blur-md">
-                <Button
-                  variant="outline"
-                  onClick={closeModal}
-                  className="w-full border-apple-border/60"
-                >
-                  Close
-                </Button>
               </div>
             </motion.div>
           </motion.div>
